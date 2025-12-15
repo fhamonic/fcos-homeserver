@@ -116,7 +116,7 @@ storage:
 
           [Container]
           ContainerName=jellyfin
-          Image=docker.io/jellyfin/jellyfin:latest
+          Image=docker.io/jellyfin/jellyfin:{{ jellyfin.version_tag }}
           AutoUpdate=registry
           UserNS=keep-id
           # PublishPort=127.0.0.1:{{ jellyfin.http_port }}:8096/tcp

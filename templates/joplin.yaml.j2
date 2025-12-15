@@ -77,7 +77,9 @@ storage:
           [Container]
           Pod=joplin.pod
           ContainerName=joplin-postgres
-          Image=docker.io/postgres:16
+          Image=docker.io/postgres:{{ joplin.postgres_version_tag }}
+          AutoUpdate=registry
+          
           Volume=postgres-data.volume:/var/lib/postgresql/data
 
           Environment=POSTGRES_DB=joplindb
@@ -101,7 +103,7 @@ storage:
           [Container]
           Pod=joplin.pod
           ContainerName=joplin-server
-          Image=docker.io/joplin/server:latest
+          Image=docker.io/joplin/server:{{ joplin.joplin_version_tag }}
           AutoUpdate=registry
 
           Environment=APP_PORT=3000

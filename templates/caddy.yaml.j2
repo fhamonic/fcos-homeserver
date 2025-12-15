@@ -122,7 +122,9 @@ storage:
 
           [Container]
           ContainerName=caddy
-          Image=docker.io/library/caddy:2.10.2
+          Image=docker.io/library/caddy:{{ caddy.version_tag }}
+          AutoUpdate=registry
+          
           Volume=/home/u_caddy/Caddyfile:/etc/caddy/Caddyfile:ro,Z
           Volume=caddy-data.volume:/data
           Volume=caddy-config.volume:/config

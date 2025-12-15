@@ -1,0 +1,59 @@
+core:
+  ssh_authorized_keys:
+    - <MY PUBLIC SSH KEY>
+
+adguardhome:
+  macvlan:
+    interface : eth0
+    subnet: 192.168.0.0/24
+    gateway: 192.168.0.1
+  ip: 192.168.0.10
+
+ext4_drives:
+  - uuid: <BLOC-DEVICE-UUID>
+    mount_point: /var/hdd
+    placeholder_folders:
+      - Movies
+      - Shows
+      - Music
+      - Photos
+
+caddy:
+  https_redirections:
+    - route: jellyfin.mydomain.com
+      internal_port: 3002
+    - route: overleaf.mydomain.com
+      internal_port: 3004
+    - route: forgejo.mydomain.com
+      internal_port: 3005
+    - route: immich.mydomain.com
+      internal_port: 3006
+    - route: joplin.mydomain.com
+      internal_port: 3007
+
+jellyfin:
+  http_port: 3002
+  media_volumes:
+    - /var/hdd/Movies:/media/Movies:ro,Z
+    - /var/hdd/Shows:/media/Shows:ro,Z
+    - /var/hdd/Music:/media/Music:ro,Z
+  self_url: jellyfin.mydomain.com
+
+overleaf:
+  http_port: 3004
+  app_name: My Overleaf
+  self_url: overleaf.mydomain.com
+  admin_email: <MY EMAIL>
+
+forgejo:
+  http_port: 3005
+  ssh_port: 2222
+
+immich:
+  http_port: 3006
+  host_drive_type: SSD
+  photos_volume: /var/hdd/Photos
+
+joplin:
+  http_port: 3007
+  self_url: joplin.mydomain.com

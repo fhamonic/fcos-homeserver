@@ -1,0 +1,34 @@
+variant: fcos
+version: 1.6.0
+storage:
+  directories:
+{% for drive in ext4_drives %}
+    # ############################## Mount point ##############################
+    - path: {{ drive.mount_point }}
+      mode: 0755
+    # ########################### Bind placeholders ###########################
+  {% for placeholder in drive.placeholder_folders %}
+    - path: {{ drive.mount_point }}/{{ placeholder }}
+      mode: 0755
+  {% endfor %}
+{% endfor %}
+
+systemd:
+  units:
+{% for drive in ext4_drives %}
+    - name: {{ drive.mount_point | replace("/", "-") }}.mount
+      enabled: true
+      contents: |
+        [Unit]
+        DefaultDependencies=no
+        After=systemd-udevd.service
+
+        [Mount]
+        What=/dev/disk/by-uuid/{{ drive.uuid }}
+        Where={{ drive.mount_point }}
+        Type=ext4
+        Options=nofail,context="system_u:object_r:container_file_t:s0",x-systemd.automount,x-systemd.idle-timeout=300
+
+        [Install]
+        WantedBy=default.target
+{% endfor %}

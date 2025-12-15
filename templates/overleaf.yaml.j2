@@ -1,0 +1,204 @@
+variant: fcos
+version: 1.6.0
+passwd:
+  groups:
+    - name: g_overleaf
+      gid: {{ 1000 + id }}
+  users:
+    - name: u_overleaf
+      uid: {{ 1000 + id }}
+      groups: [g_overleaf]
+
+storage:
+  directories:
+    # ################################ Volumes ################################
+    - path: /etc/overleaf
+      mode: 0744
+    - path: /var/overleaf
+      mode: 0777
+      user: { name: u_overleaf }
+      group: { name: g_overleaf }
+    # ######################### rootless boilerplate ##########################
+    - path: /home/u_overleaf/.config
+      mode: 0755
+      user: { name: u_overleaf }
+      group: { name: g_overleaf }
+    - path: /home/u_overleaf/.config/containers
+      mode: 0755
+      user: { name: u_overleaf }
+      group: { name: g_overleaf }
+    - path: /home/u_overleaf/.config/containers/systemd
+      mode: 0755
+      user: { name: u_overleaf }
+      group: { name: g_overleaf }
+    - path: /home/u_overleaf/.config/systemd/user
+      mode: 0755
+      user: { name: u_overleaf }
+      group: { name: g_overleaf }
+    - path: /home/u_overleaf/.config/systemd/user/default.target.wants
+      mode: 0755
+      user: { name: u_overleaf }
+      group: { name: g_overleaf }
+  links:
+    - path: /home/u_overleaf/.config/systemd/user/default.target.wants/overleaf.service
+      user: { name: u_overleaf }
+      group: { name: g_overleaf }
+      target: /home/u_overleaf/.config/containers/systemd/overleaf.pod
+      hard: false
+  files:
+    - path: /var/lib/systemd/linger/u_overleaf
+      mode: 0644
+    # ################################## Pod ##################################
+    - path: /home/u_overleaf/.config/containers/systemd/overleaf.pod
+      mode: 0644
+      user: { name: u_overleaf }
+      group: { name: g_overleaf }
+      contents:
+        inline: |
+          [Unit]
+          Description=Overleaf Pod
+          Requires=overleaf-sharelatex.service
+          Wants=overleaf-init-mongo-replset.service
+
+          [Pod]
+          PodName=overleaf
+          ServiceName=overleaf
+          # PublishPort=127.0.0.1:{{ overleaf.http_port }}:80
+          PublishPort=0.0.0.0:{{ overleaf.http_port }}:80
+    # ################################ Volumes ################################
+    - path: /home/u_overleaf/.config/containers/systemd/mongo-data.volume
+      mode: 0644
+      user: { name: u_overleaf }
+      group: { name: g_overleaf }
+      contents:
+        inline: |
+          [Volume]
+          VolumeName=mongo-data
+    - path: /home/u_overleaf/.config/containers/systemd/redis-data.volume
+      mode: 0644
+      user: { name: u_overleaf }
+      group: { name: g_overleaf }
+      contents:
+        inline: |
+          [Volume]
+          VolumeName=redis-data
+    # ################################ MongoDB ################################
+    - path: /home/u_overleaf/.config/containers/systemd/overleaf-mongo.container
+      mode: 0644
+      user: { name: u_overleaf }
+      group: { name: g_overleaf }
+      contents:
+        inline: |
+          [Unit]
+          Description=Overleaf MongoDB
+
+          [Container]
+          Pod=overleaf.pod
+          ContainerName=overleaf-mongo
+          Image=docker.io/mongo:8.0
+          Volume=mongo-data.volume:/data/db
+
+          Exec=--replSet overleaf
+
+          HealthCmd="echo 'db.stats().ok' | mongosh localhost:27017/test --quiet"
+          HealthInterval=10s
+          HealthTimeout=10s
+          HealthRetries=5
+
+          [Service]
+          TimeoutStartSec=300
+          Restart=always
+          RestartSec=10
+    # ################################# Redis #################################
+    - path: /home/u_overleaf/.config/containers/systemd/overleaf-redis.container
+      mode: 0644
+      user: { name: u_overleaf }
+      group: { name: g_overleaf }
+      contents:
+        inline: |
+          [Unit]
+          Description=Overleaf ShareLaTeX
+
+          [Container]
+          Pod=overleaf.pod
+          ContainerName=overleaf-redis
+          Image=docker.io/library/redis:7.4
+          Volume=redis-data.volume:/data
+
+          Exec=redis-server
+
+          [Service]
+          TimeoutStartSec=300
+          Restart=always
+          RestartSec=10
+    # ############################### ShareLaTeX ##############################
+    - path: /home/u_overleaf/.config/containers/systemd/overleaf-sharelatex.container
+      mode: 0644
+      user: { name: u_overleaf }
+      group: { name: g_overleaf }
+      contents:
+        inline: |
+          [Unit]
+          Description=ShareLaTeX
+          Requires=overleaf-mongo.service overleaf-redis.service
+          After=overleaf-mongo.service overleaf-redis.service
+
+          [Container]
+          Pod=overleaf.pod
+          StartWithPod=false
+          ContainerName=overleaf-sharelatex
+          Image=docker.io/rigon/sharelatex-full:6.0.0
+          Volume=/var/overleaf:/var/lib/overleaf:Z
+          
+          Environment=OVERLEAF_APP_NAME={{ overleaf.app_name }}
+          Environment=OVERLEAF_NAV_TITLE={{ overleaf.app_name }}
+          Environment=OVERLEAF_LISTEN_IP=0.0.0.0
+          Environment=OVERLEAF_MONGO_URL=mongodb://overleaf-mongo:27017/sharelatex
+          Environment=OVERLEAF_REDIS_HOST=overleaf-redis
+          Environment=REDIS_HOST=overleaf-redis
+          Environment=REDIS_PORT=6379
+          Environment=ENABLED_LINKED_FILE_TYPES=project_file,project_output_file
+          Environment=ENABLE_CONVERSIONS=true
+          Environment=EMAIL_CONFIRMATION_DISABLED=false
+          Environment=OVERLEAF_SITE_URL={{ overleaf.self_url }}
+          
+          [Service]
+          TimeoutStartSec=300
+          # TimeoutStopSec=300
+          Restart=always
+          RestartSec=10
+    # ############################# Init MongoDB ##############################
+    - path: /home/u_overleaf/.config/systemd/user/overleaf-init-mongo-replset.service
+      mode: 0644
+      user: { name: u_overleaf }
+      group: { name: g_overleaf }
+      contents:
+        inline: |
+          [Unit]
+          Description=Initialize Overleaf's MongoDB replicate set
+          Requires=overleaf-mongo.service
+          After=overleaf-mongo.service
+          ConditionPathExists=!/etc/overleaf/%N.stamp
+
+          [Service]
+          Type=oneshot
+          ExecStart=/usr/bin/podman exec overleaf-mongo sh -c " \
+            while ! mongosh --eval \"db.version()\" > /dev/null; do \
+              echo \"Waiting for Mongo...\"; \
+              sleep 1; \
+            done; \
+            mongosh --eval \"rs.initiate({ _id: 'overleaf', members: [ { _id: 0, host: 'overleaf-mongo:27017' } ] })\" > /dev/null"
+          ExecStart=/usr/bin/touch /etc/overleaf/%N.stamp
+          Restart=no
+    # ########################## Create login script ##########################
+    - path: /home/u_overleaf/init_login.sh
+      mode: 0755
+      user: { name: u_overleaf }
+      group: { name: g_overleaf }
+      contents:
+        inline: |
+          /usr/bin/podman exec overleaf-sharelatex /bin/bash -ce \
+          "cd /overleaf/services/web && node modules/server-ce-scripts/scripts/create-user \
+          --admin --email={{ overleaf.admin_email }}"
+
+

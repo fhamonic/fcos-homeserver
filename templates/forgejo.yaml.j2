@@ -1,0 +1,76 @@
+variant: fcos
+version: 1.6.0
+passwd:
+  groups:
+    - name: g_forgejo
+      gid: {{ 1000 + id }}
+  users:
+    - name: u_forgejo
+      uid: {{ 1000 + id }}
+      groups: [g_forgejo]
+storage:
+  directories:
+    # ######################### rootless boilerplate ##########################
+    - path: /home/u_forgejo/.config
+      mode: 0755
+      user: { name: u_forgejo }
+      group: { name: g_forgejo }
+    - path: /home/u_forgejo/.config/containers
+      mode: 0755
+      user: { name: u_forgejo }
+      group: { name: g_forgejo }
+    - path: /home/u_forgejo/.config/containers/systemd
+      mode: 0755
+      user: { name: u_forgejo }
+      group: { name: g_forgejo }
+    - path: /home/u_forgejo/.config/systemd/user
+      mode: 0755
+      user: { name: u_forgejo }
+      group: { name: g_forgejo }
+    - path: /home/u_forgejo/.config/systemd/user/default.target.wants
+      mode: 0755
+      user: { name: u_forgejo }
+      group: { name: g_forgejo }
+  links:
+    - path: /home/u_forgejo/.config/systemd/user/default.target.wants/forgejo.service
+      user: { name: u_forgejo }
+      group: { name: g_forgejo }
+      target: /home/u_forgejo/.config/containers/systemd/forgejo.container
+      hard: false
+  files:
+    - path: /var/lib/systemd/linger/u_forgejo
+      mode: 0644
+    # ################################ Volumes ################################
+    - path: /home/u_forgejo/.config/containers/systemd/data.volume
+      mode: 0644
+      user: { name: u_forgejo }
+      group: { name: g_forgejo }
+      contents:
+        inline: |
+          [Volume]
+          VolumeName=data
+    # ################################ Forgejo ################################
+    - path: /home/u_forgejo/.config/containers/systemd/forgejo.container
+      mode: 0644
+      user: { name: u_forgejo }
+      group: { name: g_forgejo }
+      contents:
+        inline: |
+          [Unit]
+          Description=Forgejo
+
+          [Container]
+          ContainerName=forgejo
+          Image=codeberg.org/forgejo/forgejo:13
+          UserNS=auto
+          # PublishPort=127.0.0.1:{{ forgejo.http_port }}:3000
+          PublishPort=0.0.0.0:{{ forgejo.http_port }}:3000
+          PublishPort={{ forgejo.ssh_port }}:22
+          Volume=data.volume:/data
+
+          [Service]
+          TimeoutStartSec=300
+          Restart=always
+          RestartSec=10
+
+  

@@ -1,0 +1,138 @@
+variant: fcos
+version: 1.6.0
+passwd:
+  groups:
+    - name: g_jellyfin
+      gid: {{ 1000 + id }}
+  users:
+    - name: u_jellyfin
+      uid: {{ 1000 + id }}
+      groups: [g_jellyfin]
+storage:
+  directories:
+    # ############################# Medias mounts #############################
+    - path: /var/jellyfin_media
+      mode: 0755
+      user: { name: u_jellyfin }
+      group: { name: g_jellyfin }
+    # ######################### rootless boilerplate ##########################
+    - path: /home/u_jellyfin/.config
+      mode: 0755
+      user: { name: u_jellyfin }
+      group: { name: g_jellyfin }
+    - path: /home/u_jellyfin/.config/containers
+      mode: 0755
+      user: { name: u_jellyfin }
+      group: { name: g_jellyfin }
+    - path: /home/u_jellyfin/.config/containers/systemd
+      mode: 0755
+      user: { name: u_jellyfin }
+      group: { name: g_jellyfin }
+    - path: /home/u_jellyfin/.config/systemd/user
+      mode: 0755
+      user: { name: u_jellyfin }
+      group: { name: g_jellyfin }
+    - path: /home/u_jellyfin/.config/systemd/user/default.target.wants
+      mode: 0755
+      user: { name: u_jellyfin }
+      group: { name: g_jellyfin }
+  links:
+    - path: /home/u_jellyfin/.config/systemd/user/default.target.wants/jellyfin.service
+      user: { name: u_jellyfin }
+      group: { name: g_jellyfin }
+      target: /home/u_jellyfin/.config/containers/systemd/jellyfin.container
+      hard: false
+  files:
+    - path: /var/lib/systemd/linger/u_jellyfin
+      mode: 0644
+    # ############################# Configuration #############################
+    - path: /home/u_jellyfin/web-config.json
+      mode: 0644
+      user: { name: u_jellyfin }
+      group: { name: g_jellyfin }
+      contents:
+        inline: |
+          {
+            "includeCorsCredentials": false,
+            "multiserver": false,
+            "themes": [
+              {
+                "name": "Dark",
+                "id": "dark",
+                "color": "#202020",
+                "default": true
+              }, {
+                "name": "Light",
+                "id": "light",
+                "color": "#303030"
+              }
+            ],
+            "menuLinks": [],
+            "servers": [],
+            "plugins": [
+              "playAccessValidation/plugin",
+              "experimentalWarnings/plugin",
+              "htmlAudioPlayer/plugin",
+              "htmlVideoPlayer/plugin",
+              "photoPlayer/plugin",
+              "comicsPlayer/plugin",
+              "bookPlayer/plugin",
+              "backdropScreensaver/plugin",
+              "pdfPlayer/plugin",
+              "logoScreensaver/plugin",
+              "sessionPlayer/plugin",
+              "syncPlay/plugin"
+            ]
+          }
+    # ################################ Volumes ################################
+    - path: /home/u_jellyfin/.config/containers/systemd/cache.volume
+      mode: 0644
+      user: { name: u_jellyfin }
+      group: { name: g_jellyfin }
+      contents:
+        inline: |
+          [Volume]
+          VolumeName=cache
+    - path: /home/u_jellyfin/.config/containers/systemd/config.volume
+      mode: 0644
+      user: { name: u_jellyfin }
+      group: { name: g_jellyfin }
+      contents:
+        inline: |
+          [Volume]
+          VolumeName=config
+    # ############################### Container ###############################
+    # TODO : https://forum.jellyfin.org/t-rootless-podman-hardware-acceleration
+    - path: /home/u_jellyfin/.config/containers/systemd/jellyfin.container
+      mode: 0644
+      user: { name: u_jellyfin }
+      group: { name: g_jellyfin }
+      contents:
+        inline: |
+          [Unit]
+          Description=Jellyfin
+          Wants=network-online.target
+          After=network-online.target
+
+          [Container]
+          ContainerName=jellyfin
+          Image=docker.io/jellyfin/jellyfin:latest
+          AutoUpdate=registry
+          UserNS=keep-id
+          # PublishPort=127.0.0.1:{{ jellyfin.http_port }}:8096/tcp
+          PublishPort=0.0.0.0:{{ jellyfin.http_port }}:8096/tcp
+
+          Volume=cache.volume:/cache
+          Volume=config.volume:/config
+          Volume=/home/u_jellyfin/web-config.json:/jellyfin/jellyfin-web/config.json:Z
+{% for volume in jellyfin.media_volumes %}
+          Volume={{ volume }}
+{% endfor %}
+          
+          Environment=JELLYFIN_PublishedServerUrl={{ jellyfin.self_url }}
+
+          [Service]
+          TimeoutStartSec=300
+          Restart=always
+          RestartSec=10
+

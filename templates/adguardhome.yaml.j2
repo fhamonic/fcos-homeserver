@@ -1,0 +1,65 @@
+variant: fcos
+version: 1.6.0
+passwd:
+  groups:
+    - name: g_adguardhome
+      gid: {{ 1000 + id }}
+  users:
+    - name: u_adguardhome
+      uid: {{ 1000 + id }}
+      groups: [g_adguardhome]
+storage:
+  directories:
+    - path: /var/adguardhome
+      mode: 0744
+      user: { name: u_adguardhome }
+      group: { name: g_adguardhome }
+    - path: /var/adguardhome/conf
+      mode: 0744
+      user: { name: u_adguardhome }
+      group: { name: g_adguardhome }
+    - path: /var/adguardhome/work
+      mode: 0740
+      user: { name: u_adguardhome }
+      group: { name: g_adguardhome }
+  files:
+    # ################################ Network ################################
+    - path: /etc/containers/systemd/adguardhome-macvlan.network
+      contents:
+        inline: |
+          [Unit]
+          Description=AdGuardHome MacVLAN
+
+          [Network]
+          NetworkName=adguardhome-macvlan
+          Driver=macvlan
+          Options=parent={{ adguardhome.macvlan.interface }}
+          Subnet={{ adguardhome.macvlan.subnet }}
+          Gateway={{ adguardhome.macvlan.gateway }}
+    # ############################### Container ###############################
+    - path: /etc/containers/systemd/adguardhome.container
+      contents:
+        inline: |
+          [Unit]
+          Description=AdGuardHome
+          Wants=network-online.target
+          After=network-online.target adguardhome-macvlan.network
+
+          [Container]
+          ContainerName=adguardhome
+          Image=docker.io/adguard/adguardhome:latest
+          Network=adguardhome-macvlan.network
+          IP={{ adguardhome.ip }}
+          AddCapability=NET_ADMIN NET_RAW NET_BIND_SERVICE
+
+          Volume=/var/adguardhome/work:/opt/adguardhome/work:Z
+          Volume=/var/adguardhome/conf:/opt/adguardhome/conf:Z
+
+          [Service]
+          TimeoutStartSec=300
+          Restart=always
+          RestartSec=10
+
+          [Install]
+          WantedBy=default.target
+

@@ -1,0 +1,120 @@
+variant: fcos
+version: 1.6.0
+passwd:
+  groups:
+    - name: g_joplin
+      gid: {{ 1000 + id }}
+  users:
+    - name: u_joplin
+      uid: {{ 1000 + id }}
+      groups: [g_joplin]
+storage:
+  directories:
+    # ######################### rootless boilerplate ##########################
+    - path: /home/u_joplin/.config
+      mode: 0755
+      user: { name: u_joplin }
+      group: { name: g_joplin }
+    - path: /home/u_joplin/.config/containers
+      mode: 0755
+      user: { name: u_joplin }
+      group: { name: g_joplin }
+    - path: /home/u_joplin/.config/containers/systemd
+      mode: 0755
+      user: { name: u_joplin }
+      group: { name: g_joplin }
+    - path: /home/u_joplin/.config/systemd/user
+      mode: 0755
+      user: { name: u_joplin }
+      group: { name: g_joplin }
+    - path: /home/u_joplin/.config/systemd/user/default.target.wants
+      mode: 0755
+      user: { name: u_joplin }
+      group: { name: g_joplin }
+  links:
+    - path: /home/u_joplin/.config/systemd/user/default.target.wants/joplin.service
+      user: { name: u_joplin }
+      group: { name: g_joplin }
+      target: /home/u_joplin/.config/containers/systemd/joplin.pod
+      hard: false
+  files:
+    - path: /var/lib/systemd/linger/u_joplin
+      mode: 0644
+    # ################################## Pod ##################################
+    - path: /home/u_joplin/.config/containers/systemd/joplin.pod
+      mode: 0644
+      user: { name: u_joplin }
+      group: { name: g_joplin }
+      contents:
+        inline: |
+          [Unit]
+          Description=Joplin Pod
+
+          [Pod]
+          PodName=joplin
+          ServiceName=joplin
+          # PublishPort=127.0.0.1:{{ joplin.http_port }}:3000
+          PublishPort=0.0.0.0:{{ joplin.http_port }}:3000
+    # ################################ Volumes ################################
+    - path: /home/u_joplin/.config/containers/systemd/postgres-data.volume
+      mode: 0644
+      user: { name: u_joplin }
+      group: { name: g_joplin }
+      contents:
+        inline: |
+          [Volume]
+          VolumeName=postgres-data
+    # ############################## PostgreSQL ###############################
+    - path: /home/u_joplin/.config/containers/systemd/joplin-postgres.container
+      mode: 0644
+      user: { name: u_joplin }
+      group: { name: g_joplin }
+      contents:
+        inline: |
+          [Unit]
+          Description=Joplin PostgreSQL Database
+
+          [Container]
+          Pod=joplin.pod
+          ContainerName=joplin-postgres
+          Image=docker.io/postgres:16
+          Volume=postgres-data.volume:/var/lib/postgresql/data
+
+          Environment=POSTGRES_DB=joplindb
+          Environment=POSTGRES_USER=joplin
+          Environment=POSTGRES_PASSWORD=IzmaElNT7fp478I8
+
+          [Service]
+          TimeoutStartSec=300
+    # ################################ Server #################################
+    - path: /home/u_joplin/.config/containers/systemd/joplin-server.container
+      mode: 0644
+      user: { name: u_joplin }
+      group: { name: g_joplin }
+      contents:
+        inline: |
+          [Unit]
+          Description=Joplin Server
+          Requires=joplin-postgres.container
+          After=joplin-postgres.container
+
+          [Container]
+          Pod=joplin.pod
+          ContainerName=joplin-server
+          Image=docker.io/joplin/server:latest
+          AutoUpdate=registry
+
+          Environment=APP_PORT=3000
+          Environment=APP_BASE_URL={{ joplin.self_url }}
+          Environment=DB_CLIENT=pg
+          Environment=POSTGRES_DATABASE=joplindb
+          Environment=POSTGRES_USER=joplin
+          Environment=POSTGRES_PASSWORD=IzmaElNT7fp478I8
+          Environment=POSTGRES_HOST=joplin-postgres
+          Environment=POSTGRES_PORT=5432
+          Environment=MAILER_ENABLED=0
+
+          #AddDevice=/dev/dri
+
+          [Service]
+          TimeoutStartSec=300

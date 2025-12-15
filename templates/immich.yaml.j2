@@ -1,0 +1,169 @@
+variant: fcos
+version: 1.6.0
+passwd:
+  groups:
+    - name: g_immich
+      gid: {{ 1000 + id }}
+  users:
+    - name: u_immich
+      uid: {{ 1000 + id }}
+      groups: [g_immich]
+storage:
+  directories:
+    # ######################### rootless boilerplate ##########################
+    - path: /home/u_immich/.config
+      mode: 0755
+      user: { name: u_immich }
+      group: { name: g_immich }
+    - path: /home/u_immich/.config/containers
+      mode: 0755
+      user: { name: u_immich }
+      group: { name: g_immich }
+    - path: /home/u_immich/.config/containers/systemd
+      mode: 0755
+      user: { name: u_immich }
+      group: { name: g_immich }
+    - path: /home/u_immich/.config/systemd/user
+      mode: 0755
+      user: { name: u_immich }
+      group: { name: g_immich }
+    - path: /home/u_immich/.config/systemd/user/default.target.wants
+      mode: 0755
+      user: { name: u_immich }
+      group: { name: g_immich }
+  links:
+    - path: /home/u_immich/.config/systemd/user/default.target.wants/immich.service
+      user: { name: u_immich }
+      group: { name: g_immich }
+      target: /home/u_immich/.config/containers/systemd/immich.pod
+      hard: false
+  files:
+    - path: /var/lib/systemd/linger/u_immich
+      mode: 0644
+    # ################################## Pod ##################################
+    - path: /home/u_immich/.config/containers/systemd/immich.pod
+      mode: 0644
+      user: { name: u_immich }
+      group: { name: g_immich }
+      contents:
+        inline: |
+          [Unit]
+          Description=Immich Pod
+
+          [Pod]
+          PodName=immich
+          ServiceName=immich
+          # PublishPort=127.0.0.1:{{ immich.http_port }}:2283
+          PublishPort=0.0.0.0:{{ immich.http_port }}:2283
+    # ################################ Volumes ################################
+    - path: /home/u_immich/.config/containers/systemd/postgres-data.volume
+      mode: 0644
+      user: { name: u_immich }
+      group: { name: g_immich }
+      contents:
+        inline: |
+          [Volume]
+          VolumeName=postgres-data
+    - path: /home/u_immich/.config/containers/systemd/ml-cache.volume
+      mode: 0644
+      user: { name: u_immich }
+      group: { name: g_immich }
+      contents:
+        inline: |
+          [Volume]
+          VolumeName=ml-cache
+    # ############################## PostgreSQL ###############################
+    - path: /home/u_immich/.config/containers/systemd/immich-postgres.container
+      mode: 0644
+      user: { name: u_immich }
+      group: { name: g_immich }
+      contents:
+        inline: |
+          [Unit]
+          Description=Immich PostgreSQL Database
+
+          [Container]
+          Pod=immich.pod
+          ContainerName=immich-postgres
+          Image=ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0
+          Volume=postgres-data.volume:/var/lib/postgresql/data
+
+          Environment=POSTGRES_PASSWORD=qCaZcjPEfUFOJEcK
+          Environment=POSTGRES_USER=postgres
+          Environment=POSTGRES_DB=immich
+          Environment=POSTGRES_INITDB_ARGS=--data-checksums
+
+          ShmSize=128mb
+
+          [Service]
+          TimeoutStartSec=300
+    # ################################# Redis #################################
+    - path: /home/u_immich/.config/containers/systemd/immich-redis.container
+      mode: 0644
+      user: { name: u_immich }
+      group: { name: g_immich }
+      contents:
+        inline: |
+          [Unit]
+          Description=Immich Redis
+
+          [Container]
+          Pod=immich.pod
+          ContainerName=immich-redis
+          Image=docker.io/valkey/valkey:8
+          AutoUpdate=registry
+
+          HealthCmd=redis-cli ping || exit 1
+
+          [Service]
+          TimeoutStartSec=300
+    # ########################### Machine learning ############################
+    - path: /home/u_immich/.config/containers/systemd/immich-ml.container
+      mode: 0644
+      user: { name: u_immich }
+      group: { name: g_immich }
+      contents:
+        inline: |
+          [Unit]
+          Description=Immich Machine Learning
+
+          [Container]
+          Pod=immich.pod
+          ContainerName=immich-ml
+          Image=ghcr.io/immich-app/immich-machine-learning:v2
+          AutoUpdate=registry          
+          Volume=ml-cache.volume:/cache
+
+          [Service]
+          TimeoutStartSec=300
+    # ################################ Server #################################
+    - path: /home/u_immich/.config/containers/systemd/immich-server.container
+      mode: 0644
+      user: { name: u_immich }
+      group: { name: g_immich }
+      contents:
+        inline: |
+          [Unit]
+          Description=Immich Server
+          Requires=immich-redis.container immich-postgres.container
+          Wants=immich-ml.container
+          After=immich-redis.container immich-postgres.container
+
+          [Container]
+          Pod=immich.pod
+          ContainerName=immich-server
+          Image=ghcr.io/immich-app/immich-server:v2
+          AutoUpdate=registry
+          Volume={{ immich.photos_volume }}:/data:Z
+
+          Environment=DB_STORAGE_TYPE={{ immich.host_drive_type }}
+          Environment=DB_HOSTNAME=localhost
+          Environment=REDIS_HOSTNAME=localhost
+          Environment=DB_PASSWORD=qCaZcjPEfUFOJEcK
+          Environment=DB_USERNAME=postgres
+          Environment=DB_DATABASE_NAME=immich
+
+          #AddDevice=/dev/dri
+
+          [Service]
+          TimeoutStartSec=300

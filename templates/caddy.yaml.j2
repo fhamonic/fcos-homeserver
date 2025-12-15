@@ -1,0 +1,128 @@
+variant: fcos
+version: 1.6.0
+passwd:
+  groups:
+    - name: g_caddy
+      gid: {{ 1000 + id }}
+  users:
+    - name: u_caddy
+      uid: {{ 1000 + id }}
+      groups: [g_caddy]
+storage:
+  directories:
+    # ######################### rootless boilerplate ##########################
+    - path: /home/u_caddy/.config
+      mode: 0755
+      user: { name: u_caddy }
+      group: { name: g_caddy }
+    - path: /home/u_caddy/.config/containers
+      mode: 0755
+      user: { name: u_caddy }
+      group: { name: g_caddy }
+    - path: /home/u_caddy/.config/containers/systemd
+      mode: 0755
+      user: { name: u_caddy }
+      group: { name: g_caddy }
+    - path: /home/u_caddy/.config/systemd/user
+      mode: 0755
+      user: { name: u_caddy }
+      group: { name: g_caddy }
+    - path: /home/u_caddy/.config/systemd/user/sockets.target.wants
+      mode: 0755
+      user: { name: u_caddy }
+      group: { name: g_caddy }
+    - path: /home/u_caddy/.config/systemd/user/default.target.wants
+      mode: 0755
+      user: { name: u_caddy }
+      group: { name: g_caddy }
+  links:
+    - path: /home/u_caddy/.config/systemd/user/sockets.target.wants/caddy-socket.service
+      user: { name: u_caddy }
+      group: { name: g_caddy }
+      target: /home/u_caddy/.config/systemd/user/caddy.socket
+      hard: false
+    - path: /home/u_caddy/.config/systemd/user/default.target.wants/caddy.service
+      user: { name: u_caddy }
+      group: { name: g_caddy }
+      target: /home/u_caddy/.config/containers/systemd/caddy.container
+      hard: false
+  files:
+    - path: /var/lib/systemd/linger/u_caddy
+      mode: 0644
+    # -------------------------- Unprivileged ports ---------------------------
+    - path: /etc/sysctl.d/99-unprivilegedports.conf
+      mode: 0644
+      contents:
+        inline: net.ipv4.ip_unprivileged_port_start=80
+    # ############################# Configuration #############################
+    - path: /home/u_caddy/Caddyfile
+      mode: 0644
+      user: { name: u_caddy }
+      group: { name: g_caddy }
+      contents:
+        inline: |
+          {
+            default_bind fd/4 {
+              protocols h1 h2
+            }
+            default_bind fdgram/5 {
+              protocols h3
+            }
+          }
+{% for redirection in caddy.https_redirections %}
+          {{ redirection.route }} {
+              reverse_proxy host.containers.internal:{{ redirection.internal_port }}
+          }
+{% endfor %}
+    # ################################ Socket #################################
+    # https://github.com/eriksjolund/podman-caddy-socket-activation?tab=readme-ov-file
+    - path: /home/u_caddy/.config/systemd/user/caddy.socket
+      mode: 0644
+      user: { name: u_caddy }
+      group: { name: g_caddy }
+      contents:
+        inline: |
+          [Unit]
+          Description=Caddy socket
+
+          [Socket]
+          ListenStream=[::]:80
+          ListenStream=[::]:443
+          ListenDatagram=[::]:443
+          BindIPv6Only=both
+    # ################################ Volumes ################################
+    - path: /home/u_caddy/.config/containers/systemd/caddy-data.volume
+      mode: 0644
+      user: { name: u_caddy }
+      group: { name: g_caddy }
+      contents:
+        inline: |
+          [Volume]
+          VolumeName=caddy-data
+    - path: /home/u_caddy/.config/containers/systemd/caddy-config.volume
+      mode: 0644
+      user: { name: u_caddy }
+      group: { name: g_caddy }
+      contents:
+        inline: |
+          [Volume]
+          VolumeName=caddy-config
+    # ############################### Container ###############################
+    - path: /home/u_caddy/.config/containers/systemd/caddy.container
+      mode: 0644
+      user: { name: u_caddy }
+      group: { name: g_caddy }
+      contents:
+        inline: |
+          [Unit]
+          Description=Caddy
+          Wants=network-online.target
+          Requires=caddy.socket
+          After=network-online.target caddy.socket
+
+          [Container]
+          ContainerName=caddy
+          Image=docker.io/library/caddy:2.10.2
+          Volume=/home/u_caddy/Caddyfile:/etc/caddy/Caddyfile:ro,Z
+          Volume=caddy-data.volume:/data
+          Volume=caddy-config.volume:/config

@@ -1,0 +1,9 @@
+variant: fcos
+version: 1.6.0
+passwd:
+  users:
+    - name: core
+      ssh_authorized_keys:
+{% for key in core.ssh_authorized_keys %}
+        - {{ key }}
+{% endfor %}

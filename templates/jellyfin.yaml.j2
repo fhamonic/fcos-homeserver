@@ -10,8 +10,7 @@ passwd:
       groups: [g_jellyfin]
 storage:
   directories:
-    # ############################# Medias mounts #############################
-    - path: /var/jellyfin_media
+    - path: /home/u_jellyfin/socket-dir
       mode: 0755
       user: { name: u_jellyfin }
       group: { name: g_jellyfin }
@@ -41,6 +40,11 @@ storage:
       user: { name: u_jellyfin }
       group: { name: g_jellyfin }
       target: /home/u_jellyfin/.config/containers/systemd/jellyfin.container
+      hard: false
+    - path: /home/u_jellyfin/.config/systemd/user/default.target.wants/socat.service
+      user: { name: u_jellyfin }
+      group: { name: g_jellyfin }
+      target: /home/u_jellyfin/.config/systemd/user/socat.service
       hard: false
   files:
     - path: /var/lib/systemd/linger/u_jellyfin
@@ -119,8 +123,6 @@ storage:
           Image=docker.io/jellyfin/jellyfin:{{ jellyfin.version_tag }}
           AutoUpdate=registry
           UserNS=keep-id
-          # PublishPort=127.0.0.1:{{ jellyfin.http_port }}:8096/tcp
-          PublishPort=0.0.0.0:{{ jellyfin.http_port }}:8096/tcp
 
           Volume=cache.volume:/cache
           Volume=config.volume:/config
@@ -128,11 +130,34 @@ storage:
 {% for volume in jellyfin.media_volumes %}
           Volume={{ volume }}
 {% endfor %}
-          
+          Volume=/home/u_jellyfin/socket-dir:/run/jellyfin:Z
+
           Environment=JELLYFIN_PublishedServerUrl={{ jellyfin.self_url }}
+          Environment=JELLYFIN_kestrel__socketPermissions=0777
+          Environment=JELLYFIN_kestrel__socketPath=/run/jellyfin/jellyfin.sock
+          Environment=JELLYFIN_kestrel__socket=true
 
           [Service]
+          ExecStartPre=/bin/rm -f /home/u_jellyfin/socket-dir/jellyfin.sock
           TimeoutStartSec=300
           Restart=always
           RestartSec=10
+    # ################################# socat #################################
+    - path: /home/u_jellyfin/.config/systemd/user/socat.service
+      mode: 0644
+      user: { name: u_jellyfin }
+      group: { name: g_jellyfin }
+      contents:
+        inline: |
+          [Unit]
+          Description=Expose the Jellyfin socket over TCP
+          Wants=jellyfin.service
+          After=jellyfin.service
+
+          [Service]
+          Type=simple
+          ExecStart=/usr/bin/socat TCP-LISTEN:{{ jellyfin.http_port }},bind=0.0.0.0,fork UNIX-CONNECT:/home/u_jellyfin/socket-dir/jellyfin.sock
+          Restart=always
+          RestartSec=5s
+          KillMode=process
 

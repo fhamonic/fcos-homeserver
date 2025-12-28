@@ -1,4 +1,4 @@
-# Fedora CoreOS Home Server templates
+# Fedora CoreOS Home Server
 
 This project explores a pragmatic way to use Fedora CoreOS (FCOS) as a "set-and-forget" home server by lowering the barrier to its initial provisioning, while staying aligned with FCOS design principles.
 
@@ -32,7 +32,7 @@ The main barrier to entry therefore remains the initial configuration, which is 
 **1.** Edit `metaconfig.yaml`
 - Each top-level key corresponds to a service or feature implemented as a template.
 - Remove unwanted keys.
-- Fill in the parameters for the ones you keep.
+- Fill in the parameters for the ones you keep (cf. [Templates documentation](https://github.com/fhamonic/fcos-homeserver/wiki/Templates)).
 
 **2.** Generate the Butane configuration
 ```bash

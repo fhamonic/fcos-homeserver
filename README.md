@@ -50,6 +50,8 @@ docker run --interactive --rm quay.io/coreos/butane:release --pretty --strict < 
 sudo coreos-installer install /dev/xxx --ignition-url http://192.168.xxx.xxx:8000/config.ign --insecure-ignition && sudo reboot
 ```
 
+> For maintenance and debugging instructions you can reffer to the [Maintenance documentation](https://github.com/fhamonic/fcos-homeserver/wiki/Maintenance)
+
 ## Documentation and scope
 
 This repository focuses on providing a reproducible entry point into Fedora CoreOS–based home servers.

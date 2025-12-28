@@ -9,7 +9,7 @@ It consists of:
 
 ## Why Fedora CoreOS?
 
-Fedora CoreOS is primarily known as a building block for container platforms in enterprise environments. That background is precisely what makes it attractive for a long-lived home server:
+Fedora CoreOS is primarily known as a building block for enterprise container platforms. That background is precisely what makes it attractive for a long-lived home server:
 
 - **Immutable OS**: 
 	- The base system is read-only and versioned.
@@ -27,7 +27,7 @@ Fedora CoreOS is primarily known as a building block for container platforms in 
 
 The main barrier to entry therefore remains the initial configuration, which is the purpose of this project.
 
-## Getting started
+## Getting Started
 
 **1.** Edit `metaconfig.yaml`
 - Each top-level key corresponds to a service or feature implemented as a template.
@@ -50,11 +50,17 @@ docker run --interactive --rm quay.io/coreos/butane:release --pretty --strict < 
 sudo coreos-installer install /dev/xxx --ignition-url http://192.168.xxx.xxx:8000/config.ign --insecure-ignition && sudo reboot
 ```
 
-> For maintenance and debugging instructions you can reffer to the [Maintenance documentation](https://github.com/fhamonic/fcos-homeserver/wiki/Maintenance)
+> For maintenance and debugging guidelines you can refer to the [Maintenance wiki page](https://github.com/fhamonic/fcos-homeserver/wiki/Maintenance)
 
-## Documentation and scope
+## Design Rationale and Scope
 
-This repository focuses on providing a reproducible entry point into Fedora CoreOS–based home servers.
-It is intentionally opinionated and closely follows FCOS design principles.
+This repository provides a reproducible, provisioning-time approach to building a FCOS home server.
+It is intentionally opinionated and closely follows FCOS design principles rather than abstracting them away:
 
-Before adapting this project to your own setup, it is recommended to [review the wiki](https://github.com/fhamonic/fcos-homeserver/wiki) to understand the design choices and how the generated configuration maps to Fedora CoreOS, Ignition, systemd, and Podman.
+- Declarative, first-boot configuration via Ignition
+- Rootless containers managed with systemd and Podman Quadlet
+- Minimal post-installation interaction
+
+As a consequence, this repository is not intended to be a general-purpose configuration management system or a dynamic service orchestration framework.
+
+Before adapting this project to your own setup, reviewing the [Design Rationale wiki page](https://github.com/fhamonic/fcos-homeserver/wiki/Design-Rationale) is strongly recommended to understand how the generated configuration maps to Fedora CoreOS, Ignition, systemd, and Podman.

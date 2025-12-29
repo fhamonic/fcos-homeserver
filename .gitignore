@@ -1,4 +1,4 @@
 secret.yaml
-wireguard/*/
+Makefile
 config.bu
 config.ign

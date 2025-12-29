@@ -29,7 +29,7 @@ with open("metaconfig.yaml", "r") as file:
 
 output_file = "config.bu"
 merged_dict = {}
-for id, key in enumerate(file_config.keys()):
+for id, key in enumerate(file_config.keys(), 1):
     template_file = f"{key}.yaml.j2"
     with open(os.path.join("templates", template_file), "r") as file:
         try:

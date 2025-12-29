@@ -72,3 +72,6 @@ joplin:
   joplin_image: docker.io/joplin/server:3.5
   http_port: 3007
   self_url: joplin.mydomain.com
+
+wg_easy:
+  image: ghcr.io/wg-easy/wg-easy:15

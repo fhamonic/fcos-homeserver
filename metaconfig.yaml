@@ -3,7 +3,7 @@ core:
     - <MY PUBLIC SSH KEY>
 
 adguardhome:
-  version_tag: latest
+  image: docker.io/adguard/adguardhome:latest
   macvlan:
     interface : eth0
     subnet: 192.168.0.0/24
@@ -20,7 +20,9 @@ ext4_drives:
       - Photos
 
 caddy:
-  version_tag: 2.10
+  image: docker.io/library/caddy:2.10
+  http_port: 80
+  https_port: 443
   https_redirections:
     - route: jellyfin.mydomain.com
       internal_port: 3002
@@ -34,7 +36,7 @@ caddy:
       internal_port: 3007
 
 jellyfin:
-  version_tag: 10
+  image: docker.io/jellyfin/jellyfin:10
   http_port: 3002
   media_volumes:
     - /var/hdd/Movies:/media/Movies:ro,Z
@@ -43,8 +45,8 @@ jellyfin:
   self_url: jellyfin.mydomain.com
 
 overleaf:
-  mongo_version_tag: 8.0
-  redis_version_tag: 7.4
+  mongo_image: docker.io/mongo:8.0
+  redis_image: docker.io/library/redis:7.4
   sharelatex_image: docker.io/rigon/sharelatex-full:6.0.0
   http_port: 3004
   app_name: My Overleaf
@@ -52,20 +54,21 @@ overleaf:
   admin_email: <MY EMAIL>
 
 forgejo:
-  version_tag: 13
+  image: codeberg.org/forgejo/forgejo:13
   http_port: 3005
   ssh_port: 2222
 
 immich:
-  postgres_version_tag: 14-vectorchord0.4.3-pgvectors0.2.0
-  valkey_version_tag: 8
-  immich_version_tag: v2
+  postgres_image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0
+  valkey_image: docker.io/valkey/valkey:8
+  immich_ml_image: ghcr.io/immich-app/immich-machine-learning:v2
+  immich_image: ghcr.io/immich-app/immich-server:v2
   http_port: 3006
   host_drive_type: SSD
   photos_volume: /var/hdd/Photos
 
 joplin:
-  postgres_version_tag: 16
-  joplin_version_tag: 3.5
+  postgres_image: docker.io/postgres:16
+  joplin_image: docker.io/joplin/server:3.5
   http_port: 3007
   self_url: joplin.mydomain.com

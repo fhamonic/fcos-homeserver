@@ -120,7 +120,7 @@ storage:
 
           [Container]
           ContainerName=jellyfin
-          Image=docker.io/jellyfin/jellyfin:{{ jellyfin.version_tag }}
+          Image={{ jellyfin.image }}
           AutoUpdate=registry
           UserNS=keep-id
 
@@ -133,7 +133,7 @@ storage:
           Volume=/home/u_jellyfin/socket-dir:/run/jellyfin:Z
 
           Environment=JELLYFIN_PublishedServerUrl={{ jellyfin.self_url }}
-          Environment=JELLYFIN_kestrel__socketPermissions=0777
+          Environment=JELLYFIN_kestrel__socketPermissions=0660
           Environment=JELLYFIN_kestrel__socketPath=/run/jellyfin/jellyfin.sock
           Environment=JELLYFIN_kestrel__socket=true
 

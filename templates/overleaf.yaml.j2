@@ -63,7 +63,6 @@ storage:
           [Pod]
           PodName=overleaf
           ServiceName=overleaf
-          # PublishPort=127.0.0.1:{{ overleaf.http_port }}:80
           PublishPort=0.0.0.0:{{ overleaf.http_port }}:80
     # ################################ Volumes ################################
     - path: /home/u_overleaf/.config/containers/systemd/mongo-data.volume
@@ -95,7 +94,7 @@ storage:
           [Container]
           Pod=overleaf.pod
           ContainerName=overleaf-mongo
-          Image=docker.io/mongo:{{ overleaf.mongo_version_tag }}
+          Image={{ overleaf.mongo_image }}
           AutoUpdate=registry
           
           Volume=mongo-data.volume:/data/db
@@ -124,7 +123,7 @@ storage:
           [Container]
           Pod=overleaf.pod
           ContainerName=overleaf-redis
-          Image=docker.io/library/redis:{{ overleaf.redis_version_tag }}
+          Image={{ overleaf.redis_image }}
           AutoUpdate=registry
 
           Volume=redis-data.volume:/data
@@ -197,7 +196,7 @@ storage:
           ExecStart=/usr/bin/touch /etc/overleaf/%N.stamp
           Restart=no
     # ########################## Create login script ##########################
-    - path: /home/u_overleaf/init_login.sh
+    - path: /home/u_overleaf/create_admin.sh
       mode: 0755
       user: { name: u_overleaf }
       group: { name: g_overleaf }

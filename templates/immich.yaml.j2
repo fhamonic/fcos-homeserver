@@ -85,7 +85,7 @@ storage:
           [Container]
           Pod=immich.pod
           ContainerName=immich-postgres
-          Image=ghcr.io/immich-app/postgres:{{ immich.postgres_version_tag }}
+          Image={{ immich.postgres_image }}
           AutoUpdate=registry
 
           Volume=postgres-data.volume:/var/lib/postgresql/data
@@ -112,7 +112,7 @@ storage:
           [Container]
           Pod=immich.pod
           ContainerName=immich-valkey
-          Image=docker.io/valkey/valkey:{{ immich.valkey_version_tag }}
+          Image={{ immich.valkey_image }}
           AutoUpdate=registry
 
           HealthCmd=valkey-cli ping || exit 1
@@ -132,7 +132,7 @@ storage:
           [Container]
           Pod=immich.pod
           ContainerName=immich-ml
-          Image=ghcr.io/immich-app/immich-machine-learning:{{ immich.immich_version_tag }}
+          Image={{ immich.immich_image }}
           AutoUpdate=registry
 
           Volume=ml-cache.volume:/cache
@@ -155,7 +155,7 @@ storage:
           [Container]
           Pod=immich.pod
           ContainerName=immich-server
-          Image=ghcr.io/immich-app/immich-server:{{ immich.immich_version_tag }}
+          Image={{ immich.immich_image }}
           AutoUpdate=registry
           
           Volume={{ immich.photos_volume }}:/data:Z

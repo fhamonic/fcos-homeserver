@@ -1,6 +1,9 @@
 import os
+import sys
+import traceback
 import yaml
 from jinja2 import Template, StrictUndefined
+from jinja2.exceptions import TemplateError
 
 
 # Recursively merge two dictionaries. Lists are appended, scalars must match.
@@ -27,13 +30,23 @@ with open("metaconfig.yaml", "r") as file:
 output_file = "config.bu"
 merged_dict = {}
 for id, key in enumerate(file_config.keys()):
-    with open(os.path.join("templates", f"{key}.yaml.j2"), "r") as file:
-        template = Template(file.read(), undefined=StrictUndefined)
-        rendered = template.render(file_config, id=id)
-        data = yaml.safe_load(rendered)
-        if not isinstance(data, dict):
-            raise ValueError(f"YAML root must be a dictionary in {file}")
-        merged_dict = merge_dicts(merged_dict, data)
+    template_file = f"{key}.yaml.j2"
+    with open(os.path.join("templates", template_file), "r") as file:
+        try:
+            template = Template(file.read(), undefined=StrictUndefined)
+            rendered = template.render({key: file_config[key]}, id=id)
+            data = yaml.safe_load(rendered)
+            if not isinstance(data, dict):
+                raise ValueError(f"YAML root must be a dictionary in {file}")
+            merged_dict = merge_dicts(merged_dict, data)
+        except TemplateError as e:
+            for frame in traceback.extract_tb(e.__traceback__):
+                if frame.filename in ["<template>", "<unknown>"]:
+                    print(
+                        f"{template_file}:{frame.lineno}: error: {e}", file=sys.stderr
+                    )
+                    sys.exit(1)
+            raise e
 
 with open(output_file, "w") as f:
     yaml.dump(merged_dict, f, default_flow_style=False)

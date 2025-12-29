@@ -86,9 +86,9 @@ storage:
           Description=Caddy socket
 
           [Socket]
-          ListenStream=[::]:80
-          ListenStream=[::]:443
-          ListenDatagram=[::]:443
+          ListenStream=[::]:{{ caddy.http_port }}
+          ListenStream=[::]:{{ caddy.https_port }}
+          ListenDatagram=[::]:{{ caddy.https_port }}
           BindIPv6Only=both
     # ################################ Volumes ################################
     - path: /home/u_caddy/.config/containers/systemd/caddy-data.volume
@@ -122,7 +122,7 @@ storage:
 
           [Container]
           ContainerName=caddy
-          Image=docker.io/library/caddy:{{ caddy.version_tag }}
+          Image={{ caddy.image }}
           AutoUpdate=registry
           
           Volume=/home/u_caddy/Caddyfile:/etc/caddy/Caddyfile:ro,Z

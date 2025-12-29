@@ -47,7 +47,7 @@ storage:
 
           [Container]
           ContainerName=adguardhome
-          Image=docker.io/adguard/adguardhome:{{ adguardhome.version_tag }}
+          Image={{ adguardhome.image }}
           AutoUpdate=registry
           Network=adguardhome-macvlan.network
           IP={{ adguardhome.ip }}

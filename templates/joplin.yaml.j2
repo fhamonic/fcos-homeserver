@@ -53,7 +53,6 @@ storage:
           [Pod]
           PodName=joplin
           ServiceName=joplin
-          # PublishPort=127.0.0.1:{{ joplin.http_port }}:3000
           PublishPort=0.0.0.0:{{ joplin.http_port }}:3000
     # ################################ Volumes ################################
     - path: /home/u_joplin/.config/containers/systemd/postgres-data.volume
@@ -77,7 +76,7 @@ storage:
           [Container]
           Pod=joplin.pod
           ContainerName=joplin-postgres
-          Image=docker.io/postgres:{{ joplin.postgres_version_tag }}
+          Image={{ joplin.postgres_image }}
           AutoUpdate=registry
           
           Volume=postgres-data.volume:/var/lib/postgresql/data
@@ -103,7 +102,7 @@ storage:
           [Container]
           Pod=joplin.pod
           ContainerName=joplin-server
-          Image=docker.io/joplin/server:{{ joplin.joplin_version_tag }}
+          Image={{ joplin.joplin_image }}
           AutoUpdate=registry
 
           Environment=APP_PORT=3000

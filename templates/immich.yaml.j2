@@ -53,8 +53,7 @@ storage:
           [Pod]
           PodName=immich
           ServiceName=immich
-          # PublishPort=127.0.0.1:{{ immich.http_port }}:2283
-          PublishPort=0.0.0.0:{{ immich.http_port }}:2283
+          PublishPort={{ immich.http_port }}:2283
     # ################################ Volumes ################################
     - path: /home/u_immich/.config/containers/systemd/postgres-data.volume
       mode: 0644

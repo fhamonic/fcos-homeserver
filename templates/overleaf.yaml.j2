@@ -63,7 +63,7 @@ storage:
           [Pod]
           PodName=overleaf
           ServiceName=overleaf
-          PublishPort=0.0.0.0:{{ overleaf.http_port }}:80
+          PublishPort={{ overleaf.http_port }}:80
     # ################################ Volumes ################################
     - path: /home/u_overleaf/.config/containers/systemd/mongo-data.volume
       mode: 0644

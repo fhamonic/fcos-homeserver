@@ -64,8 +64,8 @@ storage:
           Image={{ forgejo.image }}
           AutoUpdate=registry
           UserNS=auto
-          PublishPort=0.0.0.0:{{ forgejo.http_port }}:3000
-          PublishPort=0.0.0.0:{{ forgejo.ssh_port }}:22
+          PublishPort={{ forgejo.http_port }}:3000
+          PublishPort={{ forgejo.ssh_port }}:22
           
           Volume=data.volume:/data
 

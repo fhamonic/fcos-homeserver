@@ -53,7 +53,7 @@ storage:
           [Pod]
           PodName=joplin
           ServiceName=joplin
-          PublishPort=0.0.0.0:{{ joplin.http_port }}:3000
+          PublishPort={{ joplin.http_port }}:3000
     # ################################ Volumes ################################
     - path: /home/u_joplin/.config/containers/systemd/postgres-data.volume
       mode: 0644

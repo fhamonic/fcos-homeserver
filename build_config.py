@@ -24,30 +24,38 @@ def merge_dicts(a, b, path=[]):
     return a
 
 
-with open("metaconfig.yaml", "r") as file:
-    file_config = yaml.safe_load(file)
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print(f"Usage: {sys.argv[0]} metaconfig.yaml",
+                            file=sys.stderr)
+        sys.exit(1)
 
-output_file = "config.bu"
-merged_dict = {}
-for id, key in enumerate(file_config.keys(), 1):
-    template_file = f"{key}.yaml.j2"
-    with open(os.path.join("templates", template_file), "r") as file:
-        try:
-            template = Template(file.read(), undefined=StrictUndefined)
-            rendered = template.render({key: file_config[key]}, id=id)
-            data = yaml.safe_load(rendered)
-            if not isinstance(data, dict):
-                raise ValueError(f"YAML root must be a dictionary in {file}")
-            merged_dict = merge_dicts(merged_dict, data)
-        except TemplateError as e:
-            for frame in traceback.extract_tb(e.__traceback__):
-                if frame.filename in ["<template>", "<unknown>"]:
-                    print(
-                        f"{template_file}:{frame.lineno}: error: {e}", file=sys.stderr
-                    )
-                    sys.exit(1)
-            raise e
+    metaconfig_file = sys.argv[1]
+    with open(metaconfig_file, "r") as file:
+        file_config = yaml.safe_load(file)
 
-with open(output_file, "w") as f:
-    yaml.dump(merged_dict, f, default_flow_style=False)
-print(f"Configuration built to {output_file}")
+    output_file = "config.bu"
+    merged_dict = {}
+    for id, key in enumerate(file_config.keys(), 1):
+        template_file = f"{key}.yaml.j2"
+        with open(os.path.join("templates", template_file), "r") as file:
+            try:
+                template = Template(file.read(), undefined=StrictUndefined)
+                rendered = template.render({key: file_config[key]}, id=id)
+                data = yaml.safe_load(rendered)
+                if not isinstance(data, dict):
+                    raise ValueError(f"YAML root must be a dictionary in {file}")
+                merged_dict = merge_dicts(merged_dict, data)
+            except TemplateError as e:
+                for frame in traceback.extract_tb(e.__traceback__):
+                    if frame.filename in ["<template>", "<unknown>"]:
+                        print(
+                            f"{template_file}:{frame.lineno}: error: {e}",
+                            file=sys.stderr,
+                        )
+                        sys.exit(1)
+                raise e
+
+    with open(output_file, "w") as f:
+        yaml.dump(merged_dict, f, default_flow_style=False)
+    print(f"Configuration built to {output_file}")

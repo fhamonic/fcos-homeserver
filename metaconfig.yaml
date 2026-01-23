@@ -9,6 +9,8 @@ adguardhome:
     subnet: 192.168.0.0/24
     gateway: 192.168.0.1
   ip: 192.168.0.10
+  enable_host_proxy: true
+  host_proxy: 192.168.0.11
 
 ext4_drives:
   - uuid: <BLOC-DEVICE-UUID>
@@ -75,3 +77,8 @@ joplin:
 
 wg_easy:
   image: ghcr.io/wg-easy/wg-easy:15
+  http_port: 3008
+  wg_port: 51821
+  username: admin
+  password: L0NgP@SsW0rD
+  host: example.com

@@ -1,27 +1,13 @@
 variant: fcos
 version: 1.6.0
-passwd:
-  groups:
-    - name: g_adguardhome
-      gid: {{ 1000 + id }}
-  users:
-    - name: u_adguardhome
-      uid: {{ 1000 + id }}
-      groups: [g_adguardhome]
 storage:
   directories:
     - path: /var/adguardhome
       mode: 0744
-      user: { name: u_adguardhome }
-      group: { name: g_adguardhome }
     - path: /var/adguardhome/conf
       mode: 0744
-      user: { name: u_adguardhome }
-      group: { name: g_adguardhome }
     - path: /var/adguardhome/work
       mode: 0740
-      user: { name: u_adguardhome }
-      group: { name: g_adguardhome }
   files:
     # ################################ Network ################################
     - path: /etc/containers/systemd/adguardhome-macvlan.network
@@ -36,6 +22,27 @@ storage:
           Options=parent={{ adguardhome.macvlan.interface }}
           Subnet={{ adguardhome.macvlan.subnet }}
           Gateway={{ adguardhome.macvlan.gateway }}
+    # ----------------------------- MacVLAN Proxy -----------------------------
+{% if adguardhome.enable_host_proxy is true %}
+    - path: /etc/systemd/network/adguardhome-proxy.netdev
+      contents:
+        inline: |
+          [NetDev]
+          Name=adguardhome-proxy
+          Kind=macvlan
+
+          [MACVLAN]
+          Mode=bridge
+    - path: /etc/systemd/network/adguardhome-proxy.network
+      contents:
+        inline: |
+          [Match]
+          Name=adguardhome-proxy
+
+          [Network]
+          Address={{ adguardhome.host_proxy }}
+          Gateway={{ adguardhome.macvlan.gateway }}
+{% endif %}
     # ############################### Container ###############################
     - path: /etc/containers/systemd/adguardhome.container
       contents:

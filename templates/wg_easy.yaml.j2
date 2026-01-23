@@ -1,42 +1,46 @@
 variant: fcos
 version: 1.6.0
-passwd:
-  groups:
-    - name: g_wg-easy
-      gid: {{ 1000 + id }}
-  users:
-    - name: u_wg-easy
-      uid: {{ 1000 + id }}
-      groups: [g_wg-easy]
 storage:
   directories:
-    - path: /var/wg-easy
+    - path: /var/wg_easy
       mode: 0744
-      user: { name: u_wg-easy }
-      group: { name: g_wg-easy }
   files:
     # ############################ Kernel modules #############################
-    - path: /etc/modules-load.d/wg-easy.conf
+    - path: /etc/modules-load.d/wg_easy.conf
       contents:
         inline: |
           wireguard
           nft_masq
     # ############################### Container ###############################
-    - path: /etc/containers/systemd/wg-easy.container
+    - path: /etc/containers/systemd/wg_easy.container
       contents:
         inline: |
           [Unit]
-          Description=AdGuardHome
+          Description=WireGuard Easy
           Wants=network-online.target
           After=network-online.target
 
           [Container]
-          ContainerName=wg-easy
+          ContainerName=wg_easy
           Image={{ wg_easy.image }}
           AutoUpdate=registry
-          Network=host
+          PublishPort={{ wg_easy.wg_port }}:{{ wg_easy.wg_port }}/udp
+          PublishPort={{ wg_easy.http_port }}:{{ wg_easy.http_port }}/tcp
 
-          Volume=/var/wg-easy:/etc/wireguard:Z
+          Environment=INSECURE=true
+          Environment=PORT={{ wg_easy.http_port }}
+
+          Environment=INIT_ENABLED=true
+          Environment=INIT_USERNAME={{ wg_easy.username }}
+          Environment=INIT_PASSWORD={{ wg_easy.password }}
+          Environment=INIT_HOST={{ wg_easy.host }}
+          Environment=INIT_PORT={{ wg_easy.wg_port }}
+          
+          # Not supported as of wg-easy v15.1 but seems work in progress:
+          #Environment=WG_POST_UP={% raw %}nft add table inet wg_table; nft add chain inet wg_table prerouting { type nat hook prerouting priority 100 \; }; nft add chain inet wg_table postrouting { type nat hook postrouting priority 100 \; }; nft add rule inet wg_table postrouting ip saddr {{ipv4Cidr}} oifname {{device}} masquerade; nft add rule inet wg_table postrouting ip6 saddr {{ipv6Cidr}} oifname {{device}} masquerade; nft add chain inet wg_table input { type filter hook input priority 0 \; policy accept \; }; nft add rule inet wg_table input udp dport {{port}} accept; nft add rule inet wg_table input tcp dport {{uiPort}} accept; nft add chain inet wg_table forward { type filter hook forward priority 0 \; policy accept \; }; nft add rule inet wg_table forward iifname "wg0" accept; nft add rule inet wg_table forward oifname "wg0" accept;{% endraw %}
+          #Environment=WG_POST_DOWN=delete table inet wg_table
+
+          Volume=/var/wg_easy:/etc/wireguard:Z
 
           AddCapability=NET_ADMIN
           AddCapability=SYS_MODULE

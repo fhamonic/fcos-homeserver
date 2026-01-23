@@ -36,7 +36,7 @@ The main barrier to entry therefore remains the initial configuration, which is 
 
 **2.** Generate the Butane configuration
 ```bash
-python build_config.py
+python build_config.py metaconfig.yaml
 ```
 
 **3.** Proceed with the standard FCOS installation workflow

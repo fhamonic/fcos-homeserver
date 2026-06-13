@@ -34,7 +34,6 @@ if __name__ == "__main__":
     with open(metaconfig_file, "r") as file:
         file_config = yaml.safe_load(file)
 
-    output_file = "config.bu"
     merged_dict = {}
     for id, key in enumerate(file_config.keys(), 1):
         template_file = f"{key}.yaml.j2"
@@ -56,6 +55,7 @@ if __name__ == "__main__":
                         sys.exit(1)
                 raise e
 
+    output_file = "config.bu"
     with open(output_file, "w") as f:
         yaml.dump(merged_dict, f, default_flow_style=False)
     print(f"Configuration built to {output_file}")

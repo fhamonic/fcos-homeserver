@@ -82,3 +82,7 @@ wg_easy:
   username: admin
   password: L0NgP@SsW0rD
   host: example.com
+
+openwebui:
+  image: ghcr.io/open-webui/open-webui:main
+  http_port: 3009

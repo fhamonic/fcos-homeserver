@@ -1,0 +1,80 @@
+variant: fcos
+version: 1.6.0
+passwd:
+  groups:
+    - name: g_openwebui
+      gid: {{ 1000 + id }}
+  users:
+    - name: u_openwebui
+      uid: {{ 1000 + id }}
+      groups: [g_openwebui]
+storage:
+  directories:
+    # ######################### rootless boilerplate ##########################
+    - path: /home/u_openwebui/.config
+      mode: 0755
+      user: { name: u_openwebui }
+      group: { name: g_openwebui }
+    - path: /home/u_openwebui/.config/containers
+      mode: 0755
+      user: { name: u_openwebui }
+      group: { name: g_openwebui }
+    - path: /home/u_openwebui/.config/containers/systemd
+      mode: 0755
+      user: { name: u_openwebui }
+      group: { name: g_openwebui }
+    - path: /home/u_openwebui/.config/systemd
+      mode: 0755
+      user: { name: u_openwebui }
+      group: { name: g_openwebui }
+    - path: /home/u_openwebui/.config/systemd/user
+      mode: 0755
+      user: { name: u_openwebui }
+      group: { name: g_openwebui }
+    - path: /home/u_openwebui/.config/systemd/user/default.target.wants
+      mode: 0755
+      user: { name: u_openwebui }
+      group: { name: g_openwebui }
+  links:
+    - path: /home/u_openwebui/.config/systemd/user/default.target.wants/openwebui.service
+      user: { name: u_openwebui }
+      group: { name: g_openwebui }
+      target: /home/u_openwebui/.config/containers/systemd/openwebui.container
+      hard: false
+  files:
+    - path: /var/lib/systemd/linger/u_openwebui
+      mode: 0644
+    # ################################ Volumes ################################
+    - path: /home/u_openwebui/.config/containers/systemd/data.volume
+      mode: 0644
+      user: { name: u_openwebui }
+      group: { name: g_openwebui }
+      contents:
+        inline: |
+          [Volume]
+          VolumeName=data
+    # ################################ OpenWebUI ################################
+    - path: /home/u_openwebui/.config/containers/systemd/openwebui.container
+      mode: 0644
+      user: { name: u_openwebui }
+      group: { name: g_openwebui }
+      contents:
+        inline: |
+          [Unit]
+          Description=OpenWebUI
+
+          [Container]
+          ContainerName=openwebui
+          Image={{ openwebui.image }}
+          AutoUpdate=registry
+          UserNS=auto
+          PublishPort={{ openwebui.http_port }}:8080
+          
+          Volume=data.volume:/app/backend/data
+
+          [Service]
+          TimeoutStartSec=300
+          Restart=always
+          RestartSec=10
+
+  

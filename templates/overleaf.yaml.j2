@@ -96,10 +96,16 @@ storage:
           ContainerName=overleaf-mongo
           Image={{ overleaf.mongo_image }}
           AutoUpdate=registry
-          
+          # MongoDB expected uid:gid
+          User=999:999
+
           Volume=mongo-data.volume:/data/db
 
           Exec=--replSet overleaf
+          
+          # for Linux 6.19+ compatibility
+          Environment=GLIBC_TUNABLES=glibc.pthread.rseq=1
+
 
           HealthCmd="echo 'db.stats().ok' | mongosh localhost:27017/test --quiet"
           HealthInterval=10s
@@ -183,7 +189,7 @@ storage:
           Description=Initialize Overleaf's MongoDB replicate set
           Requires=overleaf-mongo.service
           After=overleaf-mongo.service
-          ConditionPathExists=!/etc/overleaf/%N.stamp
+          ConditionPathExists=!/var/home/u_overleaf/%N.stamp
 
           [Service]
           Type=oneshot
@@ -193,7 +199,7 @@ storage:
               sleep 1; \
             done; \
             mongosh --eval \"rs.initiate({ _id: 'overleaf', members: [ { _id: 0, host: 'overleaf-mongo:27017' } ] })\" > /dev/null"
-          ExecStart=/usr/bin/touch /etc/overleaf/%N.stamp
+          ExecStart=/usr/bin/touch /var/home/u_overleaf/%N.stamp
           Restart=no
     # ########################## Create login script ##########################
     - path: /home/u_overleaf/create_admin.sh

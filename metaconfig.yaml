@@ -38,6 +38,8 @@ caddy:
       internal_port: 3007
     - route: livesync.mydomain.com
       internal_port: 3010
+    - route: home.mydomain.com
+      internal_port: 3011
 
 jellyfin:
   image: docker.io/jellyfin/jellyfin:10
@@ -95,3 +97,32 @@ livesync:
   username: admin
   password: L0NgP@SsW0rD
   database: obsidiannotes
+
+homepage:
+  image: ghcr.io/gethomepage/homepage:v1
+  http_port: 3011
+  allowed_hosts:
+    - home.mydomain.com
+  services:
+    jellyfin:
+      href: https://jellyfin.mydomain.com
+      port: 3002
+      key: <JELLYFIN API KEY>
+    forgejo:
+      href: https://forgejo.mydomain.com
+      port: 3005
+      key: <FORGEJO API TOKEN>
+    immich:
+      href: https://immich.mydomain.com
+      port: 3006
+      key: <IMMICH API KEY>
+    wg_easy:
+      href: http://192.168.0.11:3008
+      port: 3008
+      username: admin
+      password: L0NgP@SsW0rD
+    adguardhome:
+      href: http://192.168.0.10
+      url: http://192.168.0.10
+      username: admin
+      password: L0NgP@SsW0rD

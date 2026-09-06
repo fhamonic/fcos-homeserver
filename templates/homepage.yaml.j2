@@ -1,0 +1,145 @@
+variant: fcos
+version: 1.6.0
+passwd:
+  groups:
+    - name: g_homepage
+      gid: {{ 1000 + id }}
+  users:
+    - name: u_homepage
+      uid: {{ 1000 + id }}
+      groups: [g_homepage]
+storage:
+  directories:
+    # ######################### rootless boilerplate ##########################
+    - path: /home/u_homepage/.config
+      mode: 0755
+      user: { name: u_homepage }
+      group: { name: g_homepage }
+    - path: /home/u_homepage/.config/containers
+      mode: 0755
+      user: { name: u_homepage }
+      group: { name: g_homepage }
+    - path: /home/u_homepage/.config/containers/systemd
+      mode: 0755
+      user: { name: u_homepage }
+      group: { name: g_homepage }
+    - path: /home/u_homepage/.config/systemd
+      mode: 0755
+      user: { name: u_homepage }
+      group: { name: g_homepage }
+    - path: /home/u_homepage/.config/systemd/user
+      mode: 0755
+      user: { name: u_homepage }
+      group: { name: g_homepage }
+    - path: /home/u_homepage/.config/systemd/user/default.target.wants
+      mode: 0755
+      user: { name: u_homepage }
+      group: { name: g_homepage }
+    # ############################# Configuration #############################
+    # Homepage populates this directory with its default YAML files on first
+    # start; edit them as u_homepage, changes are picked up live.
+    - path: /home/u_homepage/config
+      mode: 0755
+      user: { name: u_homepage }
+      group: { name: g_homepage }
+  links:
+    - path: /home/u_homepage/.config/systemd/user/default.target.wants/homepage.service
+      user: { name: u_homepage }
+      group: { name: g_homepage }
+      target: /home/u_homepage/.config/containers/systemd/homepage.container
+      hard: false
+  files:
+    - path: /var/lib/systemd/linger/u_homepage
+      mode: 0644
+{%- if homepage.services is defined %}
+{#- Widget catalog for the services templated in this repository.
+    https://gethomepage.dev/widgets/ -#}
+{%- set catalog = {
+      'adguardhome': {'name': 'AdGuard Home', 'icon': 'adguard-home', 'type': 'adguard',
+                      'description': 'DNS filtering', 'widget': {}},
+      'forgejo':     {'name': 'Forgejo', 'icon': 'forgejo', 'type': 'gitea',
+                      'description': 'Git forge', 'widget': {}},
+      'immich':      {'name': 'Immich', 'icon': 'immich', 'type': 'immich',
+                      'description': 'Photos and videos', 'widget': {'version': 2}},
+      'jellyfin':    {'name': 'Jellyfin', 'icon': 'jellyfin', 'type': 'jellyfin',
+                      'description': 'Media server', 'widget': {}},
+      'wg_easy':     {'name': 'WireGuard', 'icon': 'wg-easy', 'type': 'wgeasy',
+                      'description': 'VPN', 'widget': {'version': 2}},
+    } %}
+{#- JSON is valid YAML; undo the HTML escapes Jinja's tojson adds. -#}
+{%- macro y(v) %}{{ v | tojson | replace('\\u003c', '<') | replace('\\u003e', '>') | replace('\\u0026', '&') | replace('\\u0027', "'") }}{% endmacro %}
+{#- Keys of a service entry that describe the tile; everything else is passed
+    through to the widget block (key, username, password, version, fields...) -#}
+{%- set tile_keys = ['name', 'group', 'href', 'url', 'port', 'icon', 'description'] %}
+{%- set ns = namespace(items=[]) %}
+{%- for key, svc in homepage.services.items() %}
+{%- if key not in catalog %}{{ homepage.services[key ~ ' is not a service with a homepage widget'] }}{% endif %}
+{%- set base = catalog[key] %}
+{%- set widget = {'type': base.type} %}
+{%- set _ = widget.update({'url': svc.url if svc.url is defined else 'http://host.containers.internal:' ~ svc.port}) %}
+{%- set _ = widget.update(base.widget) %}
+{%- for k, v in svc.items() if k not in tile_keys %}{% set _ = widget.update({k: v}) %}{% endfor %}
+{%- set _ = ns.items.append({
+      'group': svc.group | default('Services'),
+      'name': svc.name | default(base.name),
+      'href': svc.href,
+      'icon': svc.icon | default(base.icon),
+      'description': svc.description | default(base.description),
+      'widget': widget,
+    }) %}
+{%- endfor %}
+    # ############################# Configuration #############################
+    # Generated once at provisioning; Homepage reloads it on edit afterwards.
+    - path: /home/u_homepage/config/services.yaml
+      mode: 0600
+      user: { name: u_homepage }
+      group: { name: g_homepage }
+      contents:
+        inline: |
+{%- for group, items in ns.items | groupby('group') %}
+          - {{ y(group) }}:
+{%- for item in items %}
+              - {{ y(item.name) }}:
+                  href: {{ y(item.href) }}
+                  icon: {{ y(item.icon) }}
+                  description: {{ y(item.description) }}
+                  widget:
+{%- for k, v in item.widget.items() %}
+                    {{ k }}: {{ y(v) }}
+{%- endfor %}
+{%- endfor %}
+{%- endfor %}
+{%- endif %}
+    # ############################### Homepage ################################
+    - path: /home/u_homepage/.config/containers/systemd/homepage.container
+      mode: 0644
+      user: { name: u_homepage }
+      group: { name: g_homepage }
+      contents:
+        inline: |
+          [Unit]
+          Description=Homepage
+          Wants=network-online.target
+          After=network-online.target
+
+          [Container]
+          ContainerName=homepage
+          Image={{ homepage.image }}
+          AutoUpdate=registry
+          # Run as the image's unprivileged node user (uid 1000), mapped to
+          # u_homepage on the host so the bind-mounted config stays editable.
+          UserNS=keep-id:uid=1000,gid=1000
+          User=1000:1000
+          PublishPort={{ homepage.http_port }}:3000
+
+          Volume=/home/u_homepage/config:/app/config:Z
+
+          Environment=HOMEPAGE_ALLOWED_HOSTS={{ homepage.allowed_hosts | join(',') }}
+{%- for name, value in (homepage.environment | default({})).items() %}
+          Environment={{ name }}={{ value }}
+{%- endfor %}
+
+          [Service]
+          TimeoutStartSec=300
+          Restart=always
+          RestartSec=10

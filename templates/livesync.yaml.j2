@@ -1,0 +1,150 @@
+variant: fcos
+version: 1.6.0
+passwd:
+  groups:
+    - name: g_livesync
+      gid: {{ 1000 + id }}
+  users:
+    - name: u_livesync
+      uid: {{ 1000 + id }}
+      groups: [g_livesync]
+storage:
+  directories:
+    # ######################### rootless boilerplate ##########################
+    - path: /home/u_livesync/.config
+      mode: 0755
+      user: { name: u_livesync }
+      group: { name: g_livesync }
+    - path: /home/u_livesync/.config/containers
+      mode: 0755
+      user: { name: u_livesync }
+      group: { name: g_livesync }
+    - path: /home/u_livesync/.config/containers/systemd
+      mode: 0755
+      user: { name: u_livesync }
+      group: { name: g_livesync }
+    - path: /home/u_livesync/.config/systemd
+      mode: 0755
+      user: { name: u_livesync }
+      group: { name: g_livesync }
+    - path: /home/u_livesync/.config/systemd/user
+      mode: 0755
+      user: { name: u_livesync }
+      group: { name: g_livesync }
+    - path: /home/u_livesync/.config/systemd/user/default.target.wants
+      mode: 0755
+      user: { name: u_livesync }
+      group: { name: g_livesync }
+  links:
+    - path: /home/u_livesync/.config/systemd/user/default.target.wants/livesync.service
+      user: { name: u_livesync }
+      group: { name: g_livesync }
+      target: /home/u_livesync/.config/containers/systemd/livesync.container
+      hard: false
+  files:
+    - path: /var/lib/systemd/linger/u_livesync
+      mode: 0644
+    # ############################# Configuration #############################
+    # Equivalent of the settings applied by utils/couchdb/couchdb-init.sh in
+    # https://github.com/vrtmrz/obsidian-livesync
+    - path: /home/u_livesync/local.ini
+      mode: 0644
+      user: { name: u_livesync }
+      group: { name: g_livesync }
+      contents:
+        inline: |
+          [couchdb]
+          single_node = true
+          max_document_size = 50000000
+
+          [chttpd]
+          require_valid_user = true
+          max_http_request_size = 4294967296
+          enable_cors = true
+
+          [chttpd_auth]
+          require_valid_user = true
+          authentication_redirect = /_utils/session.html
+
+          [httpd]
+          WWW-Authenticate = Basic realm="couchdb"
+          enable_cors = true
+
+          [cors]
+          credentials = true
+          origins = app://obsidian.md,capacitor://localhost,http://localhost
+          headers = accept, authorization, content-type, origin, referer
+    # ################################ Volumes ################################
+    - path: /home/u_livesync/.config/containers/systemd/couchdb-data.volume
+      mode: 0644
+      user: { name: u_livesync }
+      group: { name: g_livesync }
+      contents:
+        inline: |
+          [Volume]
+          VolumeName=couchdb-data
+    # ################################ CouchDB ################################
+    - path: /home/u_livesync/.config/containers/systemd/livesync.container
+      mode: 0644
+      user: { name: u_livesync }
+      group: { name: g_livesync }
+      contents:
+        inline: |
+          [Unit]
+          Description=Obsidian LiveSync CouchDB
+          Wants=network-online.target livesync-init-db.service
+          After=network-online.target
+
+          [Container]
+          ContainerName=livesync
+          Image={{ livesync.image }}
+          AutoUpdate=registry
+          # Run as the image's couchdb uid: as root the entrypoint chowns all of
+          # /opt/couchdb and aborts on the read-only local.ini bind mount.
+          UserNS=keep-id:uid=5984,gid=5984
+          User=5984:5984
+          PublishPort={{ livesync.http_port }}:5984
+
+          Volume=couchdb-data.volume:/opt/couchdb/data
+          Volume=/home/u_livesync/local.ini:/opt/couchdb/etc/local.d/livesync.ini:ro,Z
+
+          Environment=COUCHDB_USER={{ livesync.username }}
+          Environment=COUCHDB_PASSWORD={{ livesync.password }}
+
+          # require_valid_user also guards /_up, and CouchDB only listens on IPv4
+          HealthCmd=curl -sf -u '{{ livesync.username }}:{{ livesync.password }}' http://127.0.0.1:5984/_up || exit 1
+          HealthInterval=10s
+          HealthTimeout=10s
+          HealthRetries=5
+
+          [Service]
+          TimeoutStartSec=300
+          Restart=always
+          RestartSec=10
+    # ############################ Create database ############################
+    - path: /home/u_livesync/.config/systemd/user/livesync-init-db.service
+      mode: 0644
+      user: { name: u_livesync }
+      group: { name: g_livesync }
+      contents:
+        inline: |
+          [Unit]
+          Description=Create the Obsidian LiveSync database
+          Requires=livesync.service
+          After=livesync.service
+          ConditionPathExists=!/var/home/u_livesync/%N.stamp
+
+          [Service]
+          Type=oneshot
+          # 127.0.0.1 rather than localhost: CouchDB has no IPv6 listener, and
+          # pasta resets a forwarded ::1 connection instead of refusing it.
+          ExecStart=/bin/sh -c " \
+            while ! curl -sf -u '{{ livesync.username }}:{{ livesync.password }}' \
+                http://127.0.0.1:{{ livesync.http_port }}/_up > /dev/null; do \
+              echo \"Waiting for CouchDB...\"; \
+              sleep 1; \
+            done; \
+            curl -sf -X PUT -u '{{ livesync.username }}:{{ livesync.password }}' \
+              http://127.0.0.1:{{ livesync.http_port }}/{{ livesync.database }}"
+          ExecStart=/usr/bin/touch /var/home/u_livesync/%N.stamp
+          Restart=no

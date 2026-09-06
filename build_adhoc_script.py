@@ -68,8 +68,16 @@ if __name__ == "__main__":
         if "files" in data["storage"]:
             for file in data["storage"]["files"]:
                 if "contents" in file:
+                    contents = file["contents"]["inline"]
+                    # A quoted heredoc keeps quotes, $ and backslashes verbatim;
+                    # only the delimiter must not appear on its own line.
+                    delimiter = "EOF"
+                    while delimiter in contents.splitlines():
+                        delimiter += "_"
+                    if not contents.endswith("\n"):
+                        contents += "\n"
                     print(
-                        f"echo \"{file['contents']['inline']}\" | sudo tee {file['path']}"
+                        f"sudo tee {file['path']} > /dev/null <<'{delimiter}'\n{contents}{delimiter}"
                     )
                 else:
                     print(f"sudo touch {file['path']}")

@@ -36,6 +36,8 @@ caddy:
       internal_port: 3006
     - route: joplin.mydomain.com
       internal_port: 3007
+    - route: livesync.mydomain.com
+      internal_port: 3010
 
 jellyfin:
   image: docker.io/jellyfin/jellyfin:10
@@ -86,3 +88,10 @@ wg_easy:
 openwebui:
   image: ghcr.io/open-webui/open-webui:main
   http_port: 3009
+
+livesync:
+  image: docker.io/library/couchdb:3.5
+  http_port: 3010
+  username: admin
+  password: L0NgP@SsW0rD
+  database: obsidiannotes

@@ -1,0 +1,254 @@
+variant: fcos
+version: 1.6.0
+passwd:
+  groups:
+    - name: g_stalwart
+      gid: {{ 1000 + id }}
+  users:
+    - name: u_stalwart
+      uid: {{ 1000 + id }}
+      groups: [g_stalwart]
+storage:
+  directories:
+    # ######################### rootless boilerplate ##########################
+    - path: /home/u_stalwart/.config
+      mode: 0755
+      user: { name: u_stalwart }
+      group: { name: g_stalwart }
+    - path: /home/u_stalwart/.config/containers
+      mode: 0755
+      user: { name: u_stalwart }
+      group: { name: g_stalwart }
+    - path: /home/u_stalwart/.config/containers/systemd
+      mode: 0755
+      user: { name: u_stalwart }
+      group: { name: g_stalwart }
+    - path: /home/u_stalwart/.config/systemd
+      mode: 0755
+      user: { name: u_stalwart }
+      group: { name: g_stalwart }
+    - path: /home/u_stalwart/.config/systemd/user
+      mode: 0755
+      user: { name: u_stalwart }
+      group: { name: g_stalwart }
+    - path: /home/u_stalwart/.config/systemd/user/default.target.wants
+      mode: 0755
+      user: { name: u_stalwart }
+      group: { name: g_stalwart }
+  links:
+    - path: /home/u_stalwart/.config/systemd/user/default.target.wants/stalwart.service
+      user: { name: u_stalwart }
+      group: { name: g_stalwart }
+      target: /home/u_stalwart/.config/containers/systemd/stalwart.container
+      hard: false
+  files:
+    - path: /var/lib/systemd/linger/u_stalwart
+      mode: 0644
+    # ################################ Volumes ################################
+    # Stalwart writes its only file, config.json (the datastore location), in
+    # /etc/stalwart at the end of the setup wizard; everything else lives in
+    # the database under /var/lib/stalwart.
+    - path: /home/u_stalwart/.config/containers/systemd/stalwart-etc.volume
+      mode: 0644
+      user: { name: u_stalwart }
+      group: { name: g_stalwart }
+      contents:
+        inline: |
+          [Volume]
+          VolumeName=stalwart-etc
+    - path: /home/u_stalwart/.config/containers/systemd/stalwart-data.volume
+      mode: 0644
+      user: { name: u_stalwart }
+      group: { name: g_stalwart }
+      contents:
+        inline: |
+          [Volume]
+          VolumeName=stalwart-data
+    # ################################ Stalwart ###############################
+    - path: /home/u_stalwart/.config/containers/systemd/stalwart.container
+      mode: 0644
+      user: { name: u_stalwart }
+      group: { name: g_stalwart }
+      contents:
+        inline: |
+          [Unit]
+          Description=Stalwart mail server
+          Wants=network-online.target
+          After=network-online.target
+          # The database must be provisioned before the first start, otherwise
+          # Stalwart comes up in its setup-wizard mode with no mail service.
+          Requires=stalwart-init.service
+          After=stalwart-init.service
+
+          [Container]
+          ContainerName=stalwart
+          Image={{ stalwart.image }}
+          AutoUpdate=registry
+          # Web administration (proxied by Caddy) and SMTP submission (STARTTLS)
+          PublishPort={{ stalwart.http_port }}:8080
+          PublishPort={{ stalwart.smtp_port }}:587
+
+          Volume=stalwart-etc.volume:/etc/stalwart
+          Volume=stalwart-data.volume:/var/lib/stalwart
+
+          # URL published in the OAuth/JMAP discovery documents: the web UI
+          # login only works when it matches the address in the browser.
+          Environment=STALWART_PUBLIC_URL=https://{{ stalwart.self_url }}
+          # Read by the relay route created by stalwart-init.sh
+          Environment=STALWART_RELAY_PASSWORD={{ stalwart.relay.password }}
+
+          [Service]
+          TimeoutStartSec=300
+          Restart=always
+          RestartSec=10
+    # ########################### First-boot setup ############################
+    - path: /home/u_stalwart/.config/systemd/user/stalwart-init.service
+      mode: 0644
+      user: { name: u_stalwart }
+      group: { name: g_stalwart }
+      contents:
+        inline: |
+          [Unit]
+          Description=Provision Stalwart (setup wizard and relay configuration)
+          Wants=network-online.target
+          Requires=stalwart-etc-volume.service stalwart-data-volume.service
+          After=network-online.target stalwart-etc-volume.service stalwart-data-volume.service
+          Before=stalwart.service
+          ConditionPathExists=!/var/home/u_stalwart/%N.stamp
+
+          [Service]
+          Type=oneshot
+          ExecStart=/var/home/u_stalwart/stalwart-init.sh
+          ExecStart=/usr/bin/touch /var/home/u_stalwart/%N.stamp
+          Restart=no
+    - path: /home/u_stalwart/stalwart-init.sh
+      mode: 0755
+      user: { name: u_stalwart }
+      group: { name: g_stalwart }
+      contents:
+        inline: |
+          #!/bin/bash
+          # Stalwart keeps its whole configuration in its database and only
+          # exposes it through the JMAP management API, so this script drives
+          # the setup wizard and applies the relay settings through short-lived
+          # containers, before stalwart.service ever starts:
+          #   1. bootstrap mode (entered when config.json is missing): only the
+          #      Bootstrap object is available; setting it stores the wizard
+          #      answers, the domain and the administrator account;
+          #   2. a normal start: the default listeners, routes and so on are
+          #      created by the first normal start, and only when none exist
+          #      yet, so it must happen before anything is customized;
+          #   3. recovery mode: the management API is fully available while the
+          #      mail services stay off; the relay route, the submission
+          #      listener and the application account are created there.
+          # STALWART_RECOVERY_ADMIN pins the credentials of all three modes
+          # and is not set on the real service.
+          # Every step is skipped when its object already exists, so the script
+          # can be rerun after a failure.
+          set -euo pipefail
+
+          IMAGE='{{ stalwart.image }}'
+          PORT={{ stalwart.http_port }}
+          URL="http://127.0.0.1:$PORT"
+          ADMIN='admin:{{ stalwart.admin_password }}'
+
+          # jmap <object/method> <arguments-json>
+          jmap() {
+            curl -sf -u "$ADMIN" -H 'Content-Type: application/json' "$URL/jmap" \
+              -d "{\"using\":[\"urn:ietf:params:jmap:core\",\"urn:stalwart:jmap\"],\"methodCalls\":[[\"x:$1\",$2,\"c\"]]}"
+          }
+          # A refused set operation still comes back with HTTP 200
+          check() {
+            local response; response=$(cat)
+            case "$response" in
+              *notCreated*|*notUpdated*|*'"error"'*) echo "$response" >&2; return 1 ;;
+            esac
+          }
+          # query_id <object> <name>: id of the object with that name, or nothing
+          query_id() {
+            jmap "$1/query" "{\"filter\":{\"name\":\"$2\"}}" | sed -n 's/.*"ids":\["\([^"]*\)".*/\1/p'
+          }
+          # start <extra podman args>...: run Stalwart on the volumes of the
+          # service and wait until its HTTP listener answers
+          start() {
+            podman rm -f stalwart-init > /dev/null 2>&1 || true
+            podman run -d --rm --name stalwart-init --pull=missing \
+              -v stalwart-etc:/etc/stalwart -v stalwart-data:/var/lib/stalwart \
+              -p "127.0.0.1:$PORT:8080" -e "STALWART_RECOVERY_ADMIN=$ADMIN" \
+              "$@" "$IMAGE" > /dev/null
+            while ! curl -sf "$URL/healthz/live" > /dev/null; do
+              echo "Waiting for Stalwart..."
+              sleep 1
+            done
+          }
+          stop() { podman stop stalwart-init > /dev/null; }
+
+          # ------------------------ 1. setup wizard --------------------------
+          # No TLS certificate request: port 443 belongs to the reverse proxy,
+          # and the self-signed fallback is enough for the LAN-only submission
+          # port. Logs go to the console, i.e. the journal of the service.
+          start -e STALWART_RECOVERY_MODE=1
+          if jmap Bootstrap/get '{"ids":["singleton"]}' | grep -q serverHostname; then
+            echo "Running the setup wizard..."
+            jmap Bootstrap/set '{"update":{"singleton":{
+              "serverHostname":"{{ stalwart.self_url }}",
+              "defaultDomain":"{{ stalwart.domain }}",
+              "requestTlsCertificate":false,
+              "generateDkimKeys":true,
+              "tracer":{"@type":"Stdout","enable":true,"level":"info"}}}}' | check
+          fi
+          stop
+
+          # ------------------- 2. default configuration ----------------------
+          # STALWART_RELAY_PASSWORD is only set on the real service; on a rerun
+          # its absence is logged as an error for the relay route but does not
+          # prevent the start.
+          echo "Provisioning the default configuration..."
+          start
+          stop
+
+          # --------------------- 3. relay configuration ----------------------
+          start -e STALWART_RECOVERY_MODE=1
+          domain=$(query_id Domain '{{ stalwart.domain }}')
+          [ -n "$domain" ] || { echo "Domain {{ stalwart.domain }} not found" >&2; exit 1; }
+          # Recipients of the domain without an account here (the mailboxes
+          # are hosted by the provider) would otherwise be rejected at RCPT
+          jmap Domain/set "{\"update\":{\"$domain\":{\"allowRelaying\":true}}}" | check
+
+          # The wizard generates a random administrator password; replace it
+          echo "Setting the administrator password..."
+          admin=$(query_id Account admin)
+          jmap Account/set "{\"update\":{\"$admin\":{\"credentials\":{\"0\":{
+            \"@type\":\"Password\",\"secret\":\"{{ stalwart.admin_password }}\"}}}}}" | check
+
+          echo "Configuring the relay..."
+          [ -n "$(query_id MtaRoute relay)" ] || jmap MtaRoute/set '{"create":{"r":{
+            "@type":"Relay","name":"relay","description":"Upstream SMTP provider",
+            "address":"{{ stalwart.relay.host }}","port":{{ stalwart.relay.port }},
+            "protocol":"smtp","implicitTls":{{ 'true' if stalwart.relay.port == 465 else 'false' }},
+            "allowInvalidCerts":false,"authUsername":"{{ stalwart.relay.username }}",
+            "authSecret":{"@type":"EnvironmentVariable","variableName":"STALWART_RELAY_PASSWORD"}}}}' | check
+          # Every recipient goes through the relay, including the local domain:
+          # its mailboxes are hosted by the provider, not here. The route name
+          # is a string literal in Stalwart's expression language, hence '\''.
+          jmap MtaOutboundStrategy/set '{"update":{"singleton":{
+            "route":{"match":{},"else":"'\''relay'\''"}}}}' | check
+
+          # The wizard only creates an implicit-TLS listener on port 465
+          echo "Creating the submission listener..."
+          [ -n "$(query_id NetworkListener submission)" ] || jmap NetworkListener/set '{"create":{"l":{
+            "name":"submission","protocol":"smtp","bind":{"[::]:587":true},
+            "useTls":true,"tlsImplicit":false}}}' | check
+
+          # The address of an account is <name>@<domain> (server-set)
+          echo "Creating the application account..."
+          [ -n "$(query_id Account '{{ stalwart.sender.name }}')" ] || jmap Account/set "{\"create\":{\"a\":{
+            \"@type\":\"User\",\"name\":\"{{ stalwart.sender.name }}\",\"domainId\":\"$domain\",
+            \"description\":\"Applications\",\"roles\":{\"@type\":\"User\"},
+            \"credentials\":{\"0\":{\"@type\":\"Password\",\"secret\":\"{{ stalwart.sender.password }}\"}}}}}" | check
+
+          # Behind the reverse proxy, ban offending client IPs rather than the
+          # proxy's
+          jmap Http/set '{"update":{"singleton":{"useXForwarded":true}}}' | check
+          stop
+          echo "Stalwart provisioned"

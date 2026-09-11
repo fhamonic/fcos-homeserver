@@ -23,6 +23,10 @@ storage:
       mode: 0755
       user: { name: u_caddy }
       group: { name: g_caddy }
+    - path: /home/u_caddy/.config/systemd
+      mode: 0755
+      user: { name: u_caddy }
+      group: { name: g_caddy }
     - path: /home/u_caddy/.config/systemd/user
       mode: 0755
       user: { name: u_caddy }
@@ -36,7 +40,7 @@ storage:
       user: { name: u_caddy }
       group: { name: g_caddy }
   links:
-    - path: /home/u_caddy/.config/systemd/user/sockets.target.wants/caddy-socket.service
+    - path: /home/u_caddy/.config/systemd/user/sockets.target.wants/caddy.socket
       user: { name: u_caddy }
       group: { name: g_caddy }
       target: /home/u_caddy/.config/systemd/user/caddy.socket
@@ -71,9 +75,22 @@ storage:
           }
 {% for redirection in caddy.https_redirections %}
           {{ redirection.route }} {
+{%- if redirection.internal_port is defined %}
               reverse_proxy host.containers.internal:{{ redirection.internal_port }}
+{%- elif redirection.redirect_to is defined %}
+              redir {{ redirection.redirect_to }} permanent
+{%- else %}
+{{ redirection.custom | trim | indent(14, first=True) }}
+{%- endif %}
           }
 {% endfor %}
+          # fd/3 is the port {{ caddy.http_port }} socket: nothing else listens on it
+          http:// {
+              bind fd/3 {
+                  protocols h1
+              }
+              redir https://{host}{uri} permanent
+          }
     # ################################ Socket #################################
     # https://github.com/eriksjolund/podman-caddy-socket-activation?tab=readme-ov-file
     - path: /home/u_caddy/.config/systemd/user/caddy.socket
@@ -128,3 +145,8 @@ storage:
           Volume=/home/u_caddy/Caddyfile:/etc/caddy/Caddyfile:ro,Z
           Volume=caddy-data.volume:/data
           Volume=caddy-config.volume:/config
+
+          [Service]
+          TimeoutStartSec=300
+          Restart=always
+          RestartSec=10

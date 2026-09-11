@@ -84,6 +84,7 @@ def main():
     data = render(key, meta)
     root = tempfile.mkdtemp(prefix=f"adhoc-{key}-", dir=os.environ.get("SCRATCHPAD"))
     os.makedirs(os.path.join(root, "var/lib/systemd/linger"))  # exists on a real host
+    os.makedirs(os.path.join(root, "etc/sysctl.d"))
     try:
         script = localize(generate_script(key, meta), root)
         subprocess.run(["bash", "-e"], input=script, text=True, check=True)

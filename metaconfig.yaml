@@ -40,6 +40,15 @@ caddy:
       internal_port: 3010
     - route: home.mydomain.com
       internal_port: 3011
+    - route: mail.mydomain.com
+      internal_port: 3012
+    - route: mydomain.com
+      redirect_to: https://home.mydomain.com{uri}
+    - route: wg.mydomain.com
+      custom: |
+        @public not remote_ip 192.168.0.0/24
+        respond @public 403
+        reverse_proxy host.containers.internal:3008
 
 jellyfin:
   image: docker.io/jellyfin/jellyfin:10
@@ -126,3 +135,19 @@ homepage:
       url: http://192.168.0.10
       username: admin
       password: L0NgP@SsW0rD
+
+stalwart:
+  image: docker.io/stalwartlabs/stalwart:v0.16
+  http_port: 3012
+  smtp_port: 2525
+  self_url: mail.mydomain.com
+  domain: mydomain.com
+  admin_password: Sunny-Meadow-Cactus-42
+  relay:
+    host: smtp.mail.provider.com
+    port: 465
+    username: me@mydomain.com
+    password: <PROVIDER MAILBOX PASSWORD>
+  sender:
+    name: noreply
+    password: Sunny-Meadow-Cactus-42

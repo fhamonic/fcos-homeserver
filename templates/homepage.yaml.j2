@@ -51,7 +51,7 @@ storage:
   files:
     - path: /var/lib/systemd/linger/u_homepage
       mode: 0644
-{%- if homepage.services is defined %}
+{%- if homepage.services is defined or homepage.custom_services is defined %}
 {#- Widget catalog for the services templated in this repository.
     https://gethomepage.dev/widgets/ -#}
 {%- set catalog = {
@@ -63,16 +63,44 @@ storage:
                       'description': 'Photos and videos', 'widget': {'version': 2}},
       'jellyfin':    {'name': 'Jellyfin', 'icon': 'jellyfin', 'type': 'jellyfin',
                       'description': 'Media server', 'widget': {}},
+      'prometheus':  {'name': 'Prometheus', 'icon': 'prometheus', 'type': 'prometheus',
+                      'description': 'Metrics', 'widget': {}},
       'wg_easy':     {'name': 'WireGuard', 'icon': 'wg-easy', 'type': 'wgeasy',
                       'description': 'VPN', 'widget': {'version': 2}},
     } %}
 {#- JSON is valid YAML; undo the HTML escapes Jinja's tojson adds. -#}
 {%- macro y(v) %}{{ v | tojson | replace('\\u003c', '<') | replace('\\u003e', '>') | replace('\\u0026', '&') | replace('\\u0027', "'") }}{% endmacro %}
+{#- Mapping keys stay bare when they are plain identifiers, quoted otherwise. -#}
+{%- macro yk(v) %}{% if v is string and v[:1].isalpha() and (v | replace('_', '') | replace('-', '')).isalnum() and v | lower not in ['y', 'n', 'yes', 'no', 'on', 'off', 'true', 'false', 'null'] %}{{ v }}{% else %}{{ y(v) }}{% endif %}{% endmacro %}
+{#- Block-style YAML of a nested value: one line per entry, each indented by
+    `indent` spaces and newline-terminated; scalars go through y(). -#}
+{%- macro yml(v, indent) -%}
+{%- set pad = ' ' * indent -%}
+{%- if v is mapping -%}
+{%- for key, x in v.items() -%}
+{%- if (x is mapping or (x is sequence and x is not string)) and x -%}
+{{ pad }}{{ yk(key) }}:{{ '\n' }}{{ yml(x, indent + 2) }}
+{%- else -%}
+{{ pad }}{{ yk(key) }}: {{ y(x) }}{{ '\n' }}
+{%- endif -%}
+{%- endfor -%}
+{%- else -%}
+{%- for x in v -%}
+{%- if x is mapping and x -%}
+{{ pad }}- {{ yml(x, indent + 2)[indent + 2:] }}
+{%- elif x is sequence and x is not string and x -%}
+{{ pad }}-{{ '\n' }}{{ yml(x, indent + 2) }}
+{%- else -%}
+{{ pad }}- {{ y(x) }}{{ '\n' }}
+{%- endif -%}
+{%- endfor -%}
+{%- endif -%}
+{%- endmacro -%}
 {#- Keys of a service entry that describe the tile; everything else is passed
     through to the widget block (key, username, password, version, fields...) -#}
 {%- set tile_keys = ['name', 'group', 'href', 'url', 'port', 'icon', 'description'] %}
 {%- set ns = namespace(items=[]) %}
-{%- for key, svc in homepage.services.items() %}
+{%- for key, svc in (homepage.services | default({})).items() %}
 {%- if key not in catalog %}{{ homepage.services[key ~ ' is not a service with a homepage widget'] }}{% endif %}
 {%- set base = catalog[key] %}
 {%- set widget = {'type': base.type} %}
@@ -82,11 +110,27 @@ storage:
 {%- set _ = ns.items.append({
       'group': svc.group | default('Services'),
       'name': svc.name | default(base.name),
-      'href': svc.href,
-      'icon': svc.icon | default(base.icon),
-      'description': svc.description | default(base.description),
-      'widget': widget,
+      'tile': {
+        'href': svc.href,
+        'icon': svc.icon | default(base.icon),
+        'description': svc.description | default(base.description),
+        'widget': widget,
+      },
     }) %}
+{%- endfor %}
+{#- Custom entries are Homepage service entries written as-is (href, icon,
+    description, widget, siteMonitor...) under a name and an optional group.
+    https://gethomepage.dev/configs/services/ -#}
+{%- for svc in homepage.custom_services | default([]) %}
+{%- set tile = {} %}
+{%- for k, v in svc.items() if k not in ['name', 'group'] %}{% set _ = tile.update({k: v}) %}{% endfor %}
+{%- set _ = ns.items.append({'group': svc.group | default('Services'), 'name': svc.name, 'tile': tile}) %}
+{%- endfor %}
+{%- set services = [] %}
+{%- for group, items in ns.items | groupby('group') %}
+{%- set entries = [] %}
+{%- for item in items %}{% set _ = entries.append({item.name: item.tile}) %}{% endfor %}
+{%- set _ = services.append({group: entries}) %}
 {%- endfor %}
     # ############################# Configuration #############################
     # Generated once at provisioning; Homepage reloads it on edit afterwards.
@@ -96,19 +140,7 @@ storage:
       group: { name: g_homepage }
       contents:
         inline: |
-{%- for group, items in ns.items | groupby('group') %}
-          - {{ y(group) }}:
-{%- for item in items %}
-              - {{ y(item.name) }}:
-                  href: {{ y(item.href) }}
-                  icon: {{ y(item.icon) }}
-                  description: {{ y(item.description) }}
-                  widget:
-{%- for k, v in item.widget.items() %}
-                    {{ k }}: {{ y(v) }}
-{%- endfor %}
-{%- endfor %}
-{%- endfor %}
+{{ yml(services, 10) }}
 {%- endif %}
     # ############################### Homepage ################################
     - path: /home/u_homepage/.config/containers/systemd/homepage.container

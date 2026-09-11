@@ -49,6 +49,11 @@ caddy:
         @public not remote_ip 192.168.0.0/24
         respond @public 403
         reverse_proxy host.containers.internal:3008
+    - route: prometheus.mydomain.com
+      custom: |
+        @public not remote_ip 192.168.0.0/24
+        respond @public 403
+        reverse_proxy host.containers.internal:3013
 
 jellyfin:
   image: docker.io/jellyfin/jellyfin:10
@@ -135,6 +140,37 @@ homepage:
       url: http://192.168.0.10
       username: admin
       password: L0NgP@SsW0rD
+    prometheus:
+      href: https://prometheus.mydomain.com
+      port: 3013
+  custom_services:
+    - name: vLLM
+      group: Workstation
+      href: http://192.168.0.27:8000/v1/models
+      icon: mdi-brain
+      description: Qwen3.8-27B
+      widget:
+        type: prometheusmetric
+        url: http://host.containers.internal:3013
+        refreshInterval: 5000
+        metrics:
+          - label: Running / waiting
+            query: vllm:num_requests_running + vllm:num_requests_waiting
+          - label: KV cache used
+            query: vllm:kv_cache_usage_perc
+            format: { type: number, scale: 100, suffix: " %", options: { maximumFractionDigits: 0 } }
+          - label: Output tok/s (1 min)
+            query: rate(vllm:generation_tokens_total[1m])
+            format: { type: number, options: { maximumFractionDigits: 0 } }
+          - label: Prefix cache hit rate
+            query: rate(vllm:prefix_cache_hits_total[5m]) / rate(vllm:prefix_cache_queries_total[5m])
+            format: { type: number, scale: 100, suffix: " %", options: { maximumFractionDigits: 0 } }
+          - label: MTP acceptance
+            query: rate(vllm:spec_decode_num_accepted_tokens_total[5m]) / rate(vllm:spec_decode_num_draft_tokens_total[5m])
+            format: { type: number, scale: 100, suffix: " %", options: { maximumFractionDigits: 0 } }
+          - label: Mean TTFT
+            query: rate(vllm:time_to_first_token_seconds_sum[5m]) / rate(vllm:time_to_first_token_seconds_count[5m])
+            format: { type: number, suffix: " s", options: { maximumFractionDigits: 2 } }
 
 stalwart:
   image: docker.io/stalwartlabs/stalwart:v0.16
@@ -151,3 +187,14 @@ stalwart:
   sender:
     name: noreply
     password: Sunny-Meadow-Cactus-42
+
+prometheus:
+  image: docker.io/prom/prometheus:v3
+  http_port: 3013
+  retention: 30d
+  scrape_interval: 15s
+  jobs:
+    - name: vllm
+      targets:
+        - 192.168.0.27:8000
+      scrape_interval: 5s

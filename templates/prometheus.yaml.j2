@@ -1,0 +1,149 @@
+variant: fcos
+version: 1.6.0
+passwd:
+  groups:
+    - name: g_prometheus
+      gid: {{ 1000 + id }}
+  users:
+    - name: u_prometheus
+      uid: {{ 1000 + id }}
+      groups: [g_prometheus]
+storage:
+  directories:
+    # ######################### rootless boilerplate ##########################
+    - path: /home/u_prometheus/.config
+      mode: 0755
+      user: { name: u_prometheus }
+      group: { name: g_prometheus }
+    - path: /home/u_prometheus/.config/containers
+      mode: 0755
+      user: { name: u_prometheus }
+      group: { name: g_prometheus }
+    - path: /home/u_prometheus/.config/containers/systemd
+      mode: 0755
+      user: { name: u_prometheus }
+      group: { name: g_prometheus }
+    - path: /home/u_prometheus/.config/systemd
+      mode: 0755
+      user: { name: u_prometheus }
+      group: { name: g_prometheus }
+    - path: /home/u_prometheus/.config/systemd/user
+      mode: 0755
+      user: { name: u_prometheus }
+      group: { name: g_prometheus }
+    - path: /home/u_prometheus/.config/systemd/user/default.target.wants
+      mode: 0755
+      user: { name: u_prometheus }
+      group: { name: g_prometheus }
+    # ############################# Configuration #############################
+    # Mounted as /etc/prometheus; a directory rather than the single file so
+    # that an editor replacing the file is still seen by the container.
+    - path: /home/u_prometheus/config
+      mode: 0755
+      user: { name: u_prometheus }
+      group: { name: g_prometheus }
+  links:
+    - path: /home/u_prometheus/.config/systemd/user/default.target.wants/prometheus.service
+      user: { name: u_prometheus }
+      group: { name: g_prometheus }
+      target: /home/u_prometheus/.config/containers/systemd/prometheus.container
+      hard: false
+  files:
+    - path: /var/lib/systemd/linger/u_prometheus
+      mode: 0644
+{#- JSON is valid YAML; undo the HTML escapes Jinja's tojson adds. -#}
+{%- macro y(v) %}{{ v | tojson | replace('\\u003c', '<') | replace('\\u003e', '>') | replace('\\u0026', '&') | replace('\\u0027', "'") }}{% endmacro %}
+{#- Mapping keys stay bare when they are plain identifiers, quoted otherwise. -#}
+{%- macro yk(v) %}{% if v is string and v[:1].isalpha() and (v | replace('_', '') | replace('-', '')).isalnum() and v | lower not in ['y', 'n', 'yes', 'no', 'on', 'off', 'true', 'false', 'null'] %}{{ v }}{% else %}{{ y(v) }}{% endif %}{% endmacro %}
+{#- Block-style YAML of a nested value: one line per entry, each indented by
+    `indent` spaces and newline-terminated; scalars go through y(). -#}
+{%- macro yml(v, indent) -%}
+{%- set pad = ' ' * indent -%}
+{%- if v is mapping -%}
+{%- for key, x in v.items() -%}
+{%- if (x is mapping or (x is sequence and x is not string)) and x -%}
+{{ pad }}{{ yk(key) }}:{{ '\n' }}{{ yml(x, indent + 2) }}
+{%- else -%}
+{{ pad }}{{ yk(key) }}: {{ y(x) }}{{ '\n' }}
+{%- endif -%}
+{%- endfor -%}
+{%- else -%}
+{%- for x in v -%}
+{%- if x is mapping and x -%}
+{{ pad }}- {{ yml(x, indent + 2)[indent + 2:] }}
+{%- elif x is sequence and x is not string and x -%}
+{{ pad }}-{{ '\n' }}{{ yml(x, indent + 2) }}
+{%- else -%}
+{{ pad }}- {{ y(x) }}{{ '\n' }}
+{%- endif -%}
+{%- endfor -%}
+{%- endif -%}
+{%- endmacro -%}
+{#- One scrape_config per job with a static target list; keys other than
+    name, targets and labels are passed through as-is (scrape_interval,
+    metrics_path, scheme, basic_auth...). Prometheus also scrapes itself. -#}
+{%- set jobs = [{'job_name': 'prometheus', 'static_configs': [{'targets': ['localhost:9090']}]}] %}
+{%- for job in prometheus.jobs %}
+{%- set static = {'targets': [job.targets] if job.targets is string else job.targets} %}
+{%- if job.labels is defined %}{% set _ = static.update({'labels': job.labels}) %}{% endif %}
+{%- set entry = {'job_name': job.name} %}
+{%- for k, v in job.items() if k not in ['name', 'targets', 'labels'] %}{% set _ = entry.update({k: v}) %}{% endfor %}
+{%- set _ = entry.update({'static_configs': [static]}) %}
+{%- set _ = jobs.append(entry) %}
+{%- endfor %}
+{%- set config = {
+      'global': {'scrape_interval': prometheus.scrape_interval},
+      'storage': {'tsdb': {'retention': {'time': prometheus.retention}}},
+      'scrape_configs': jobs,
+    } %}
+    # ############################# Configuration #############################
+    # Generated once at provisioning; Prometheus re-reads it within 30 s of an
+    # edit made as u_prometheus (--config.auto-reload).
+    - path: /home/u_prometheus/config/prometheus.yml
+      mode: 0644
+      user: { name: u_prometheus }
+      group: { name: g_prometheus }
+      contents:
+        inline: |
+{{ yml(config, 10) }}
+    # ################################ Volumes ################################
+    - path: /home/u_prometheus/.config/containers/systemd/prometheus-data.volume
+      mode: 0644
+      user: { name: u_prometheus }
+      group: { name: g_prometheus }
+      contents:
+        inline: |
+          [Volume]
+          VolumeName=prometheus-data
+    # ############################## Prometheus ###############################
+    - path: /home/u_prometheus/.config/containers/systemd/prometheus.container
+      mode: 0644
+      user: { name: u_prometheus }
+      group: { name: g_prometheus }
+      contents:
+        inline: |
+          [Unit]
+          Description=Prometheus
+          Wants=network-online.target
+          After=network-online.target
+
+          [Container]
+          ContainerName=prometheus
+          Image={{ prometheus.image }}
+          AutoUpdate=registry
+          # Run as the image's nobody user (uid 65534) with a fixed mapping to
+          # u_prometheus, so the data volume keeps one owner across restarts.
+          UserNS=keep-id:uid=65534,gid=65534
+          User=65534:65534
+          PublishPort={{ prometheus.http_port }}:9090
+
+          Volume=prometheus-data.volume:/prometheus
+          Volume=/home/u_prometheus/config:/etc/prometheus:ro,Z
+
+          # Exec= replaces the image command, so its two flags are repeated.
+          Exec=--config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus --config.auto-reload
+
+          [Service]
+          TimeoutStartSec=300
+          Restart=always
+          RestartSec=10

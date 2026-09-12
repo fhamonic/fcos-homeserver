@@ -1,6 +1,6 @@
 ---
 name: fcos-service-template
-description: Add a new self-hosted service to this Fedora CoreOS home server as a Jinja2 Butane template (rootless Podman Quadlet), validate it, debug container failures with a local docker mirror, and document it in the wiki. Use when asked to add, template, port, fix, or document a service (from a docker-compose file, an upstream setup guide, or journal logs of a failing unit).
+description: Add a new self-hosted service to this Fedora CoreOS home server as a Jinja2 Butane template (rootless Podman Quadlet), validate it, debug container failures with a local docker mirror, and document it in the Zensical docs under docs/. Use when asked to add, template, port, fix, or document a service (from a docker-compose file, an upstream setup guide, or journal logs of a failing unit).
 ---
 
 # Purpose
@@ -219,22 +219,22 @@ A stamped init unit that never succeeded has no stamp and will rerun.
 
 # Part 4 — Documentation
 
-The docs live in the GitHub wiki, page `Templates`
-(`git clone git@github.com:fhamonic/fcos-homeserver.wiki.git`). Do not push;
-output the raw markdown for the user. Two pieces:
+The docs are a Zensical site under `docs/` (deployed to GitHub Pages by
+`.github/workflows/docs.yml`; preview with `zensical serve`). Edit the
+files below directly, in the same change as the template; never print
+markdown for the user to paste. Four pieces per template:
 
-1. A summary-table row:
-   `| [Name](https://github.com/fhamonic/fcos-homeserver/wiki/Templates#<key>) | Service | :white_check_mark: | one-line description |`
-2. A section appended after the last one:
+1. A page `docs/templates/<key>.md`, following the existing pages:
 
 ```markdown
----
-
 # `<key>`
 
 Configuration for the <Service> ... (what it is, what the template does for
-it, how it is meant to be exposed through Caddy, client-side setup steps,
-security notes as a `> **Note:**`).
+it, how it is meant to be exposed through Caddy, client-side setup steps).
+Rootful templates say so here and name the capabilities that force it.
+
+!!! note
+    Security notes and pitfalls go in admonitions, not blockquotes.
 
 ## `<key>.image`
 
@@ -259,5 +259,26 @@ One sentence on what it is and where it is used.
 * **Example:** `...`
 ```
 
-Rootless column is `:white_check_mark:` unless the template writes to
-`/etc/containers/systemd/`.
+   One `##` per top-level parameter, `###` for nested ones (`<key>.relay.host`),
+   `[]` for list items (`<key>.jobs[].name`), in the order of the example
+   block of `metaconfig.yaml`. Mark optional parameters with a leading
+   `* **Optional**` bullet. Link other templates as `[caddy](caddy.md)` and
+   the maintenance page as `../getting-started/maintenance.md`. Multi-line
+   examples go in a fenced block indented under the `* **Example:**` bullet.
+
+2. A nav entry `{ "<key>" = "templates/<key>.md" }` appended to the
+   `Templates` list of `nav` in `zensical.toml`.
+
+3. A summary-table row appended to `docs/templates/index.md`:
+   `| [<key>](<key>.md) | Service | ✓ | one-line description |`
+   The Rootless column is `✓` unless the template writes to
+   `/etc/containers/systemd/`, in which case leave it empty. Keep the table
+   and the nav in the same order.
+
+4. A link in the matching row of the "What is in the box" table of
+   `docs/index.md` (Administration / Network / Applications / Dashboard and
+   plumbing).
+
+Then run `zensical build --clean` and report its output faithfully: it must
+end with `No issues found`, and a broken link or missing anchor is a
+failure to fix, not a warning to mention.

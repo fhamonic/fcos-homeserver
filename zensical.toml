@@ -1,0 +1,86 @@
+# Documentation site (Zensical, successor of Material for MkDocs).
+# Preview locally with:  pip install zensical && zensical serve
+
+[project]
+site_name = "Fedora CoreOS Homeserver"
+site_description = "A set-and-forget home server on Fedora CoreOS, provisioned at first boot from a single YAML file into rootless Podman Quadlet services."
+site_url = "https://fhamonic.github.io/fcos-homeserver/"
+repo_url = "https://github.com/fhamonic/fcos-homeserver"
+repo_name = "fhamonic/fcos-homeserver"
+edit_uri = "edit/main/docs/"
+
+extra_css = ["stylesheets/extra.css"]
+
+nav = [
+  { "Home" = "index.md" },
+  { "Getting started" = [
+    { "Installation" = "getting-started/index.md" },
+    { "Maintenance" = "getting-started/maintenance.md" },
+  ] },
+  { "Templates" = [
+    { "Overview" = "templates/index.md" },
+    { "core" = "templates/core.md" },
+    { "adguardhome" = "templates/adguardhome.md" },
+    { "ext4_drives" = "templates/ext4_drives.md" },
+    { "caddy" = "templates/caddy.md" },
+    { "jellyfin" = "templates/jellyfin.md" },
+    { "overleaf" = "templates/overleaf.md" },
+    { "forgejo" = "templates/forgejo.md" },
+    { "immich" = "templates/immich.md" },
+    { "joplin" = "templates/joplin.md" },
+    { "wg_easy" = "templates/wg_easy.md" },
+    { "openwebui" = "templates/openwebui.md" },
+    { "livesync" = "templates/livesync.md" },
+    { "homepage" = "templates/homepage.md" },
+    { "stalwart" = "templates/stalwart.md" },
+    { "prometheus" = "templates/prometheus.md" },
+  ] },
+  { "Design rationale" = "design-rationale.md" },
+]
+
+[project.validation.links]
+anchors = "warn"
+
+[project.theme]
+# Zensical's own look: Inter / JetBrains Mono, lucide icons.
+variant = "modern"
+logo = "assets/logo.svg"
+favicon = "assets/logo.svg"
+features = [
+  "navigation.tabs",
+  "navigation.sections",
+  "navigation.top",
+  "navigation.footer",
+  "content.code.copy",
+  "search.suggest",
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+primary = "custom"
+accent = "custom"
+toggle.icon = "material/weather-night"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+primary = "custom"
+accent = "custom"
+toggle.icon = "material/weather-sunny"
+toggle.name = "Switch to light mode"
+
+[project.markdown_extensions.admonition]
+[project.markdown_extensions.attr_list]
+[project.markdown_extensions.md_in_html]
+[project.markdown_extensions.tables]
+[project.markdown_extensions.toc]
+permalink = true
+[project.markdown_extensions.pymdownx.details]
+[project.markdown_extensions.pymdownx.superfences]
+[project.markdown_extensions.pymdownx.highlight]
+anchor_linenums = true
+[project.markdown_extensions.pymdownx.inlinehilite]
+[project.markdown_extensions.pymdownx.tabbed]
+alternate_style = true

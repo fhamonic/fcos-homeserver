@@ -7,6 +7,8 @@ It consists of:
 - A single `metaconfig.yaml` that declaratively selects and parametrizes those templates.
 - A `build_config.py` script that renders and merges the templates into a valid Butane configuration, which is then consumed by the standard FCOS installation workflow.
 
+📖 Full documentation: [fhamonic.github.io/fcos-homeserver](https://fhamonic.github.io/fcos-homeserver/)
+
 ## Why Fedora CoreOS?
 
 Fedora CoreOS is primarily known as a building block for enterprise container platforms. That background is precisely what makes it attractive for a long-lived home server:
@@ -32,7 +34,7 @@ The main barrier to entry therefore remains the initial configuration, which is 
 **1.** Edit `metaconfig.yaml`
 - Each top-level key corresponds to a service or feature implemented as a template.
 - Remove unwanted keys.
-- Fill in the parameters for the ones you keep (cf. [Templates documentation](https://github.com/fhamonic/fcos-homeserver/wiki/Templates)).
+- Fill in the parameters for the ones you keep (cf. the [templates documentation](https://fhamonic.github.io/fcos-homeserver/templates/)).
 
 **2.** Generate the Butane configuration
 ```bash
@@ -50,7 +52,7 @@ docker run --interactive --rm quay.io/coreos/butane:release --pretty --strict < 
 sudo coreos-installer install /dev/xxx --ignition-url http://192.168.xxx.xxx:8000/config.ign --insecure-ignition && sudo reboot
 ```
 
-> For maintenance and debugging guidelines you can refer to the [Maintenance wiki page](https://github.com/fhamonic/fcos-homeserver/wiki/Maintenance)
+> For maintenance and debugging guidelines you can refer to the [Maintenance page](https://fhamonic.github.io/fcos-homeserver/getting-started/maintenance/) of the documentation
 
 ## Design Rationale and Scope
 
@@ -63,4 +65,4 @@ It is intentionally opinionated and closely follows FCOS design principles rathe
 
 As a consequence, this repository is not intended to be a general-purpose configuration management system or a dynamic service orchestration framework.
 
-Before adapting this project to your own setup, reviewing the [Design Rationale wiki page](https://github.com/fhamonic/fcos-homeserver/wiki/Design-Rationale) is strongly recommended to understand how the generated configuration maps to Fedora CoreOS, Ignition, systemd, and Podman.
+Before adapting this project to your own setup, reviewing the [Design rationale page](https://fhamonic.github.io/fcos-homeserver/design-rationale/) is strongly recommended to understand how the generated configuration maps to Fedora CoreOS, Ignition, systemd, and Podman.

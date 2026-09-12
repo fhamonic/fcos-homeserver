@@ -5,20 +5,11 @@ core:
 adguardhome:
   image: docker.io/adguard/adguardhome:latest
   macvlan:
-    interface : eth0
+    interface: eth0
     subnet: 192.168.0.0/24
     gateway: 192.168.0.1
   ip: 192.168.0.10
   host_proxy_ip: 192.168.0.11
-
-ext4_drives:
-  - uuid: <BLOC-DEVICE-UUID>
-    mount_point: /var/hdd
-    placeholder_dirs:
-      - Movies
-      - Shows
-      - Music
-      - Photos
 
 caddy:
   image: docker.io/library/caddy:2.10
@@ -48,68 +39,26 @@ caddy:
         @public not remote_ip 192.168.0.0/24
         respond @public 403
         reverse_proxy host.containers.internal:3008
+    # Prometheus has no authentication: answer 403 to clients outside the LAN.
     - hostname: prometheus.mydomain.com
       directives: |
         @public not remote_ip 192.168.0.0/24
         respond @public 403
         reverse_proxy host.containers.internal:3013
 
-jellyfin:
-  image: docker.io/jellyfin/jellyfin:10
-  http_port: 3002
-  media_volumes:
-    - /var/hdd/Movies:/media/Movies:ro,Z
-    - /var/hdd/Shows:/media/Shows:ro,Z
-    - /var/hdd/Music:/media/Music:ro,Z
-  hostname: jellyfin.mydomain.com
-
-overleaf:
-  image: docker.io/rigon/sharelatex-full:6.0.0
-  mongo_image: docker.io/mongo:8.0
-  redis_image: docker.io/library/redis:7.4
-  http_port: 3004
-  app_name: My Overleaf
-  hostname: overleaf.mydomain.com
-  admin_email: <MY EMAIL>
+ext4_drives:
+  - uuid: <BLOC-DEVICE-UUID>
+    mount_point: /var/hdd
+    placeholder_dirs:
+      - Movies
+      - Shows
+      - Music
+      - Photos
 
 forgejo:
   image: codeberg.org/forgejo/forgejo:13
   http_port: 3005
   ssh_port: 2222
-
-immich:
-  image: ghcr.io/immich-app/immich-server:v2
-  ml_image: ghcr.io/immich-app/immich-machine-learning:v2
-  postgres_image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0
-  valkey_image: docker.io/valkey/valkey:8
-  http_port: 3006
-  db_storage_type: SSD
-  photos_dir: /var/hdd/Photos
-
-joplin:
-  image: docker.io/joplin/server:3.5
-  postgres_image: docker.io/postgres:16
-  http_port: 3007
-  hostname: joplin.mydomain.com
-
-wg_easy:
-  image: ghcr.io/wg-easy/wg-easy:15
-  http_port: 3008
-  wireguard_port: 51821
-  admin_username: admin
-  admin_password: L0NgP@SsW0rD
-  host: example.com
-
-openwebui:
-  image: ghcr.io/open-webui/open-webui:main
-  http_port: 3009
-
-livesync:
-  image: docker.io/library/couchdb:3.5
-  http_port: 3010
-  admin_username: admin
-  admin_password: L0NgP@SsW0rD
-  database: obsidiannotes
 
 homepage:
   image: ghcr.io/gethomepage/homepage:v1
@@ -157,35 +106,86 @@ homepage:
             query: vllm:num_requests_running + vllm:num_requests_waiting
           - label: KV cache used
             query: vllm:kv_cache_usage_perc
-            format: { type: number, scale: 100, suffix: " %", options: { maximumFractionDigits: 0 } }
+            format:
+              {
+                type: number,
+                scale: 100,
+                suffix: " %",
+                options: { maximumFractionDigits: 0 },
+              }
           - label: Output tok/s (1 min)
             query: rate(vllm:generation_tokens_total[1m])
             format: { type: number, options: { maximumFractionDigits: 0 } }
           - label: Prefix cache hit rate
             query: rate(vllm:prefix_cache_hits_total[5m]) / rate(vllm:prefix_cache_queries_total[5m])
-            format: { type: number, scale: 100, suffix: " %", options: { maximumFractionDigits: 0 } }
+            format:
+              {
+                type: number,
+                scale: 100,
+                suffix: " %",
+                options: { maximumFractionDigits: 0 },
+              }
           - label: MTP acceptance
             query: rate(vllm:spec_decode_num_accepted_tokens_total[5m]) / rate(vllm:spec_decode_num_draft_tokens_total[5m])
-            format: { type: number, scale: 100, suffix: " %", options: { maximumFractionDigits: 0 } }
+            format:
+              {
+                type: number,
+                scale: 100,
+                suffix: " %",
+                options: { maximumFractionDigits: 0 },
+              }
           - label: Mean TTFT
             query: rate(vllm:time_to_first_token_seconds_sum[5m]) / rate(vllm:time_to_first_token_seconds_count[5m])
-            format: { type: number, suffix: " s", options: { maximumFractionDigits: 2 } }
+            format:
+              {
+                type: number,
+                suffix: " s",
+                options: { maximumFractionDigits: 2 },
+              }
 
-stalwart:
-  image: docker.io/stalwartlabs/stalwart:v0.16
-  http_port: 3012
-  smtp_port: 2525
-  hostname: mail.mydomain.com
-  domain: mydomain.com
-  admin_password: Sunny-Meadow-Cactus-42
-  relay:
-    host: smtp.mail.provider.com
-    port: 465
-    username: me@mydomain.com
-    password: <PROVIDER MAILBOX PASSWORD>
-  sender:
-    username: noreply
-    password: Sunny-Meadow-Cactus-42
+immich:
+  image: ghcr.io/immich-app/immich-server:v2
+  ml_image: ghcr.io/immich-app/immich-machine-learning:v2
+  postgres_image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0
+  valkey_image: docker.io/valkey/valkey:8
+  http_port: 3006
+  db_storage_type: SSD
+  photos_dir: /var/hdd/Photos
+
+jellyfin:
+  image: docker.io/jellyfin/jellyfin:10
+  http_port: 3002
+  media_volumes:
+    - /var/hdd/Movies:/media/Movies:ro,Z
+    - /var/hdd/Shows:/media/Shows:ro,Z
+    - /var/hdd/Music:/media/Music:ro,Z
+  hostname: jellyfin.mydomain.com
+
+joplin:
+  image: docker.io/joplin/server:3.5
+  postgres_image: docker.io/postgres:16
+  http_port: 3007
+  hostname: joplin.mydomain.com
+
+livesync:
+  image: docker.io/library/couchdb:3.5
+  http_port: 3010
+  admin_username: admin
+  admin_password: L0NgP@SsW0rD
+  database: obsidiannotes
+
+openwebui:
+  image: ghcr.io/open-webui/open-webui:main
+  http_port: 3009
+
+overleaf:
+  image: docker.io/rigon/sharelatex-full:6.0.0
+  mongo_image: docker.io/mongo:8.0
+  redis_image: docker.io/library/redis:7.4
+  http_port: 3004
+  app_name: My Overleaf
+  hostname: overleaf.mydomain.com
+  admin_email: <MY EMAIL>
 
 prometheus:
   image: docker.io/prom/prometheus:v3
@@ -197,3 +197,28 @@ prometheus:
       targets:
         - 192.168.0.27:8000
       scrape_interval: 5s
+
+stalwart:
+  image: docker.io/stalwartlabs/stalwart:v0.16
+  http_port: 3012
+  smtp_port: 2525
+  hostname: mail.mydomain.com
+  domain: mydomain.com
+  # Stalwart requires a strong password and refuses `L0NgP@SsW0rD`
+  admin_password: Sunny-Meadow-Cactus-42
+  relay:
+    host: smtp.mail.provider.com
+    port: 465
+    username: me@mydomain.com
+    password: <PROVIDER MAILBOX PASSWORD>
+  sender:
+    username: noreply
+    password: Sunny-Meadow-Cactus-42
+
+wg_easy:
+  image: ghcr.io/wg-easy/wg-easy:15
+  http_port: 3008
+  wireguard_port: 51821
+  admin_username: admin
+  admin_password: L0NgP@SsW0rD
+  host: example.com

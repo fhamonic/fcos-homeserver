@@ -23,7 +23,7 @@ storage:
           Subnet={{ adguardhome.macvlan.subnet }}
           Gateway={{ adguardhome.macvlan.gateway }}
     # ----------------------------- MacVLAN Proxy -----------------------------
-{% if adguardhome.enable_host_proxy is true %}
+{% if adguardhome.host_proxy_ip is defined %}
     - path: /etc/systemd/network/adguardhome-proxy.netdev
       contents:
         inline: |
@@ -40,7 +40,7 @@ storage:
           Name=adguardhome-proxy
 
           [Network]
-          Address={{ adguardhome.host_proxy }}
+          Address={{ adguardhome.host_proxy_ip }}
           Gateway={{ adguardhome.macvlan.gateway }}
 {% endif %}
     # ############################### Container ###############################

@@ -14,7 +14,7 @@ Stalwart keeps its whole configuration in its database and only exposes it throu
 * an account for the applications;
 * the administrator password.
 
-The web administration interface is exposed over plain HTTP on the internal port and is meant to be published through a [Caddy](caddy.md) HTTPS redirection at `self_url`: open `https://mail.mydomain.com/admin` and log in as `admin` with `admin_password`.
+The web administration interface is exposed over plain HTTP on the internal port and is meant to be published through a [Caddy](caddy.md) site at `hostname`: open `https://mail.mydomain.com/admin` and log in as `admin` with `admin_password`.
 
 ## Configuring the applications
 
@@ -23,8 +23,8 @@ Each application that sends mail is then configured with:
 * **SMTP host:** `host.containers.internal`
 * **Port:** `smtp_port`
 * **Security:** STARTTLS. The certificate is self-signed, so enable the option of the application that skips certificate verification (`FORCE_TRUST_SERVER_CERT` in Forgejo, `EMAIL_SMTP_TLS_REJECT_UNAUTH=false` in Overleaf, *Ignore certificate errors* in Immich...).
-* **Username** / **Password:** `sender.name` / `sender.password`
-* **From address:** `sender.name@domain`. Stalwart rejects messages from any other address; the display name is free (`Forgejo <noreply@mydomain.com>`).
+* **Username** / **Password:** `sender.username` / `sender.password`
+* **From address:** `sender.username@domain`. Stalwart rejects messages from any other address; the display name is free (`Forgejo <noreply@mydomain.com>`).
 
 ## DNS records
 
@@ -36,7 +36,7 @@ DNS records to publish at the DNS provider of the domain:
 * **MX:** no change, incoming mail keeps going to the provider.
 
 !!! note
-    Mailbox providers usually require the From address to match the authenticated mailbox and cap the hourly volume (OVH: about 200 messages per hour). In that case set `sender.name` to the local part of the mailbox given in `relay.username`. Transactional services accept any address of a verified domain.
+    Mailbox providers usually require the From address to match the authenticated mailbox and cap the hourly volume (OVH: about 200 messages per hour). In that case set `sender.username` to the local part of the mailbox given in `relay.username`. Transactional services accept any address of a verified domain.
 
 !!! note
     Stalwart checks passwords against a strength policy (zxcvbn score of at least 3); a weak `admin_password` or `sender.password` makes `stalwart-init.service` fail, with the reason in `journalctl --user -u stalwart-init.service`. The service can be started again once the password has been changed.
@@ -65,12 +65,12 @@ Port to listen for SMTP submissions from the applications (STARTTLS).
 * **Type:** Integer
 * **Example:** `2525`
 
-## `stalwart.self_url`
+## `stalwart.hostname`
 
-Public hostname of the server.
+Public host name of the service.
 
-* **Type:** String
-* **Purpose:** Caddy route of the web interface, to which the web login is bound; also used in SMTP greetings and message headers.
+* **Type:** Fully qualified domain name
+* **Purpose:** Caddy site of the web interface, to which the web login is bound; also used in SMTP greetings and message headers.
 * **Example:** `mail.mydomain.com`
 
 ## `stalwart.domain`
@@ -124,9 +124,9 @@ Password to authenticate with the provider.
 
 The Stalwart account used by the applications.
 
-### `stalwart.sender.name`
+### `stalwart.sender.username`
 
-Name of the account, whose address is `sender.name@domain`.
+Username of the account, whose address is `sender.username@domain`.
 
 * **Type:** String
 * **Purpose:** SMTP username of the applications and local part of their From address.

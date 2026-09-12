@@ -20,11 +20,13 @@ Each top-level key of `metaconfig.yaml` selects the template of the same name an
 | [stalwart](stalwart.md) | Service | ✓ | outgoing mail relay for the other services (SMTP submission + DKIM) |
 | [prometheus](prometheus.md) | Service | ✓ | metrics collection and time series database, backing the Homepage widgets |
 
-**Rootless** services run as a dedicated unprivileged user (`u_<template>`), with their Quadlet units under that user's home; the others need capabilities or host networking that only root can grant and are installed system-wide under `/etc/containers/systemd/`. See the [design rationale](../design-rationale.md) for what each kind puts on the system, and the [maintenance page](../getting-started/maintenance.md) for how to reach them.
+**Rootless** services run as a dedicated unprivileged user (`u_<template>`), with their Quadlet units under that user's home; the others need capabilities or host networking that only root can grant and are installed system-wide under `/etc/containers/systemd/`. See the [design rationale](../design-rationale/index.md) for what each kind puts on the system, and the [maintenance page](../getting-started/maintenance.md) for how to reach them.
 
 ## Conventions
 
-- Every service that serves HTTP takes an `http_port` on which it is published on the host. Nothing is exposed to the internet by itself: publish it through a [Caddy](caddy.md) HTTPS redirection pointing at that port.
+- Every service that serves HTTP takes an `http_port` on which it is published on the host. Nothing is exposed to the internet by itself: publish it through a [Caddy](caddy.md) site pointing at that port.
 - Images are given in full (`registry/namespace/name:tag`) and follow their tag through Podman's automatic updates, so prefer a major or major.minor tag to `latest`.
-- Services that need to know their public address take a `self_url`, which should match the Caddy route.
+- Services that need to know their public address take a `hostname`, which should match their Caddy site.
 - Internal credentials between the containers of one service are hard-coded in the template and never reachable from outside the pod; only the credentials you must know are parameters.
+
+The [terminology page](../design-rationale/terminology.md) lists every shared parameter name and what it means.

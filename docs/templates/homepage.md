@@ -1,6 +1,6 @@
 # `homepage`
 
-Configuration for [Homepage](https://gethomepage.dev/), a static dashboard that lists your services, bookmarks and status widgets. The container runs as the image's unprivileged `node` user, mapped to `u_homepage` on the host. Its configuration directory is `/home/u_homepage/config`: Homepage fills it with default `settings.yaml`, `services.yaml`, `bookmarks.yaml` and `widgets.yaml` files on first start, and changes made there as `u_homepage` are applied live without a restart. Expose it through Caddy with a [`caddy.https_redirections`](caddy.md#caddyhttps_redirections) route pointing at `homepage.http_port`, and list that route in `homepage.allowed_hosts`.
+Configuration for [Homepage](https://gethomepage.dev/), a static dashboard that lists your services, bookmarks and status widgets. The container runs as the image's unprivileged `node` user, mapped to `u_homepage` on the host. Its configuration directory is `/home/u_homepage/config`: Homepage fills it with default `settings.yaml`, `services.yaml`, `bookmarks.yaml` and `widgets.yaml` files on first start, and changes made there as `u_homepage` are applied live without a restart. Expose it through Caddy with a [`caddy.sites`](caddy.md#caddysites) entry pointing at `homepage.http_port`, and list that host name in `homepage.allowed_hosts`.
 
 !!! note
     Homepage has no authentication of its own. Only expose it behind Caddy on a host name you control, and keep widget API keys in `homepage.environment` (as `HOMEPAGE_VAR_*` variables referenced from the YAML files) rather than in the config files themselves. The Docker socket integration is not supported here: a rootless Podman socket would only see the Homepage container, so use each service's API integration instead.
@@ -21,7 +21,7 @@ Port to listen for HTTP requests.
 
 ## `homepage.allowed_hosts`
 
-Host names Homepage accepts requests for, joined into the required `HOMEPAGE_ALLOWED_HOSTS` variable. Include the Caddy route and, if you access it directly, `<server-ip>:<http_port>`.
+Host names Homepage accepts requests for, joined into the required `HOMEPAGE_ALLOWED_HOSTS` variable. Include the Caddy site's host name and, if you access it directly, `<server-ip>:<http_port>`.
 
 * **Type:** List of strings
 * **Example:** `[home.mydomain.com, 192.168.0.11:3011]`
@@ -37,7 +37,7 @@ Optional extra environment variables passed to the container, typically `HOMEPAG
 
 ## `homepage.services`
 
-Services of this repository to list on the dashboard, each with its status widget. The key is the template name (`adguardhome`, `forgejo`, `immich`, `jellyfin`, `prometheus`, `wg_easy`): the widget type, icon and description come from a built-in catalog. `href` is the link of the tile and `port` the internal port of the service, reached as `host.containers.internal:<port>` (or give a complete `url`). The tile can be adjusted with `name`, `group` (`Services` by default), `icon` and `description`; every other key (`key`, `username`, `password`, `fields`...) is passed through to the [widget](https://gethomepage.dev/widgets/) as-is.
+Services of this repository to list on the dashboard, each with its status widget. The key is the template name (`adguardhome`, `forgejo`, `immich`, `jellyfin`, `prometheus`, `wg_easy`): the widget type, icon and description come from a built-in catalog. `href` is the link of the tile and `port` the `http_port` of the service, reached as `host.containers.internal:<port>` (or give a complete `url`). The tile can be adjusted with `name`, `group` (`Services` by default), `icon` and `description`; every other key (`key`, `username`, `password`, `fields`...) is passed through to the [widget](https://gethomepage.dev/widgets/) as-is.
 
 * **Type:** Map of maps
 * **Example:**

@@ -7,7 +7,7 @@ storage:
     - path: {{ drive.mount_point }}
       mode: 0755
     # ########################### Bind placeholders ###########################
-  {% for placeholder in drive.placeholder_folders %}
+  {% for placeholder in drive.placeholder_dirs %}
     - path: {{ drive.mount_point }}/{{ placeholder }}
       mode: 0755
   {% endfor %}

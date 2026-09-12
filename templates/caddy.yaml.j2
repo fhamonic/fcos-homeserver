@@ -73,14 +73,14 @@ storage:
               protocols h3
             }
           }
-{% for redirection in caddy.https_redirections %}
-          {{ redirection.route }} {
-{%- if redirection.internal_port is defined %}
-              reverse_proxy host.containers.internal:{{ redirection.internal_port }}
-{%- elif redirection.redirect_to is defined %}
-              redir {{ redirection.redirect_to }} permanent
+{% for site in caddy.sites %}
+          {{ site.hostname }} {
+{%- if site.port is defined %}
+              reverse_proxy host.containers.internal:{{ site.port }}
+{%- elif site.redirect_to is defined %}
+              redir {{ site.redirect_to }} permanent
 {%- else %}
-{{ redirection.custom | trim | indent(14, first=True) }}
+{{ site.directives | trim | indent(14, first=True) }}
 {%- endif %}
           }
 {% endfor %}

@@ -2,7 +2,7 @@
 
 A service is one file, `templates/<key>.yaml.j2`, that `build_config.py` renders into a Butane fragment and merges with the others. Writing one is mostly mechanical once you have read a couple of existing templates; the time goes into making the container start, which is why the loop below applies the template to a running server with the ad hoc script rather than reprovisioning at every attempt.
 
-Read the [design rationale](../design-rationale.md) first: it explains the units a template is made of. Then read the templates it names, which cover every pattern in use: [openwebui](../templates/openwebui.md) (single container), [joplin](../templates/joplin.md) (pod), [overleaf](../templates/overleaf.md) (one-shot initialization), [caddy](../templates/caddy.md) (socket activation), [adguardhome](../templates/adguardhome.md) and [wg_easy](../templates/wg_easy.md) (rootful).
+Read the [design rationale](../design-rationale/index.md) first: it explains the units a template is made of, and the [terminology](../design-rationale/terminology.md) page the parameter names shared by the templates. Then read the templates it names, which cover every pattern in use: [openwebui](../templates/openwebui.md) (single container), [joplin](../templates/joplin.md) (pod), [overleaf](../templates/overleaf.md) (one-shot initialization), [caddy](../templates/caddy.md) (socket activation), [adguardhome](../templates/adguardhome.md) and [wg_easy](../templates/wg_easy.md) (rootful).
 
 ## 1. Start from the upstream compose file
 
@@ -33,14 +33,14 @@ The compose file maps almost line by line:
 
 Containers that talk to each other go in a pod and reach each other on `localhost`; other services on the host are reached as `host.containers.internal:<port>`. Steps to run once become a `Type=oneshot` unit that waits for the application, does its job and touches a stamp file, guarded by `ConditionPathExists=!<stamp>` (see the overleaf template for the shape).
 
-Expose as parameters only what a user must decide: images, `http_port`, credentials, the public URL, host paths. Credentials between the containers of one pod stay hard-coded. Rendering is strict, so every `{{ key.x }}` must exist in the block; guard optional ones with `{% if key.x is defined %}`.
+Expose as parameters only what a user must decide: images, `http_port`, credentials, the public `hostname`, host paths, named as the [terminology](../design-rationale/terminology.md) page says. Credentials between the containers of one pod stay hard-coded. Rendering is strict, so every `{{ key.x }}` must exist in the block; guard optional ones with `{% if key.x is defined %}`.
 
 !!! note "Escaping"
     `%` in a unit value is a systemd specifier: `%N` is intended, a `%` in a password must be `%%`. `$VAR` in `ExecStart` is expanded by systemd from the unit's environment, not the container's. Upstream Go templates use `{{ ... }}` too; wrap them in `{% raw %} ... {% endraw %}`.
 
 ## 3. Append the block to `metaconfig.yaml`
 
-Add an example block for the new key, with the next free port in the `30xx` range, and a matching [`caddy.https_redirections`](../templates/caddy.md#caddyhttps_redirections) route.
+Add an example block for the new key, with the next free port in the `30xx` range, and a matching [`caddy.sites`](../templates/caddy.md#caddysites) entry.
 
 !!! warning "Append only"
     `id` is the position of the key in the file, and the user and group of the template get uid and gid `1000 + id`. Inserting a key in the middle shifts the id of every key after it: those templates get new uids on the next build, and the ad hoc script, run against a server provisioned with the old numbering, fails on `useradd` or creates users that no longer own their files. New keys go at the end.

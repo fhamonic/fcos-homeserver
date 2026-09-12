@@ -36,7 +36,7 @@ For this reason, mount points **must** reside under `/var`.
 * **Type:** Absolute path
 * **Example:** `/var/hdd`
 
-## `ext4_drives[].placeholder_folders`
+## `ext4_drives[].placeholder_dirs`
 
 Directories to be created under the mount point on the host system.
 

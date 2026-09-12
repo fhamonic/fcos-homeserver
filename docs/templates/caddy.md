@@ -1,6 +1,6 @@
 # `caddy`
 
-Configuration for the [Caddy](https://caddyserver.com/) reverse proxy, the single entry point of the server: every other service is published through one of its routes, with a certificate obtained automatically.
+Configuration for the [Caddy](https://caddyserver.com/) reverse proxy, the single entry point of the server: every other service is published through one of its sites, with a certificate obtained automatically.
 
 Caddy runs rootless but listens on the privileged ports 80 and 443 thanks to two mechanisms: the host lowers `net.ipv4.ip_unprivileged_port_start` to 80, and the sockets are opened by systemd (`caddy.socket`) and passed to the container, which also lets the unit start on the first connection.
 
@@ -27,47 +27,47 @@ TCP (and UDP for QUIC/HTTP-3) connections are forwarded to Caddy via UNIX socket
 * **Type:** Integer
 * **Example:** `443`
 
-## `caddy.https_redirections`
+## `caddy.sites`
 
-List of HTTPS virtual hosts and their corresponding internal services.
-By default, Caddy will automatically request an SSL certificate from Let's Encrypt for each configured route.
+List of sites served over HTTPS, one per public host name. A site is either a reverse proxy to a service of the server, a redirect to another address, or a block of Caddy directives written by hand.
+Caddy automatically requests a certificate from Let's Encrypt for each host name.
 
 !!! note
-    If you reprovision your system multiple times, consider commenting out the HTTPS redirections. Excessive certificate requests may cause Let's Encrypt to temporarily block your IP.
+    If you reprovision your system multiple times, consider commenting out the sites. Excessive certificate requests may cause Let's Encrypt to temporarily block your IP.
 
-Exactly one of `internal_port`, `redirect_to` or `custom` must be set per route.
+Exactly one of `port`, `redirect_to` or `directives` must be set per site.
 
-### `caddy.https_redirections[].route`
+### `caddy.sites[].hostname`
 
-Public domain name handled by Caddy.
+Public host name of the site, which must resolve to the server.
 
 * **Type:** Fully qualified domain name
 * **Example:** `jellyfin.mydomain.com`
 
-### `caddy.https_redirections[].internal_port`
+### `caddy.sites[].port`
 
-Internal HTTP port where the backend service is exposed. Caddy reaches it on the host through `host.containers.internal`.
+The `http_port` of the service to proxy the site to. Caddy reaches it on the host through `host.containers.internal`.
 
 * **Type:** Integer
 * **Example:** `3002`
 
-### `caddy.https_redirections[].redirect_to`
+### `caddy.sites[].redirect_to`
 
-Target of a permanent HTTP redirect for the route, instead of a reverse proxy. Caddy placeholders such as `{uri}` are allowed.
+Target of a permanent HTTP redirect for the site, instead of a reverse proxy. Caddy placeholders such as `{uri}` are allowed.
 
 * **Type:** String
 * **Example:** `https://home.mydomain.com{uri}`
 
-### `caddy.https_redirections[].custom`
+### `caddy.sites[].directives`
 
-Caddy directives inserted verbatim into the route's site block, for anything `internal_port` and `redirect_to` cannot express. Remember that Caddy orders directives itself (`respond` runs before `reverse_proxy`), so scope `respond` with a matcher.
+Caddy directives inserted verbatim into the site block, for anything `port` and `redirect_to` cannot express. Remember that Caddy orders directives itself (`respond` runs before `reverse_proxy`), so scope `respond` with a matcher.
 
 * **Type:** Multi-line string
-* **Example:** restrict a route to the local network
+* **Example:** restrict a site to the local network
 
     ```yaml
-    - route: prometheus.mydomain.com
-      custom: |
+    - hostname: prometheus.mydomain.com
+      directives: |
         @public not remote_ip 192.168.0.0/24
         respond @public 403
         reverse_proxy host.containers.internal:3013

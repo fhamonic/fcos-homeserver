@@ -102,11 +102,11 @@ storage:
           [Container]
           Pod=joplin.pod
           ContainerName=joplin-server
-          Image={{ joplin.joplin_image }}
+          Image={{ joplin.image }}
           AutoUpdate=registry
 
           Environment=APP_PORT=3000
-          Environment=APP_BASE_URL={{ joplin.self_url }}
+          Environment=APP_BASE_URL=https://{{ joplin.hostname }}
           Environment=DB_CLIENT=pg
           Environment=POSTGRES_DATABASE=joplindb
           Environment=POSTGRES_USER=joplin

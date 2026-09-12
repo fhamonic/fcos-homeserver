@@ -24,17 +24,17 @@ storage:
           ContainerName=wg_easy
           Image={{ wg_easy.image }}
           AutoUpdate=registry
-          PublishPort={{ wg_easy.wg_port }}:{{ wg_easy.wg_port }}/udp
+          PublishPort={{ wg_easy.wireguard_port }}:{{ wg_easy.wireguard_port }}/udp
           PublishPort={{ wg_easy.http_port }}:{{ wg_easy.http_port }}/tcp
 
           Environment=INSECURE=true
           Environment=PORT={{ wg_easy.http_port }}
 
           Environment=INIT_ENABLED=true
-          Environment=INIT_USERNAME={{ wg_easy.username }}
-          Environment=INIT_PASSWORD={{ wg_easy.password }}
+          Environment=INIT_USERNAME={{ wg_easy.admin_username }}
+          Environment=INIT_PASSWORD={{ wg_easy.admin_password }}
           Environment=INIT_HOST={{ wg_easy.host }}
-          Environment=INIT_PORT={{ wg_easy.wg_port }}
+          Environment=INIT_PORT={{ wg_easy.wireguard_port }}
           
           # Not supported as of wg-easy v15.1 but seems work in progress:
           #Environment=WG_POST_UP={% raw %}nft add table inet wg_table; nft add chain inet wg_table prerouting { type nat hook prerouting priority 100 \; }; nft add chain inet wg_table postrouting { type nat hook postrouting priority 100 \; }; nft add rule inet wg_table postrouting ip saddr {{ipv4Cidr}} oifname {{device}} masquerade; nft add rule inet wg_table postrouting ip6 saddr {{ipv6Cidr}} oifname {{device}} masquerade; nft add chain inet wg_table input { type filter hook input priority 0 \; policy accept \; }; nft add rule inet wg_table input udp dport {{port}} accept; nft add rule inet wg_table input tcp dport {{uiPort}} accept; nft add chain inet wg_table forward { type filter hook forward priority 0 \; policy accept \; }; nft add rule inet wg_table forward iifname "wg0" accept; nft add rule inet wg_table forward oifname "wg0" accept;{% endraw %}

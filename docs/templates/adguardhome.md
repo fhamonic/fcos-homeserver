@@ -18,7 +18,7 @@ Devices that already hold a lease will typically attempt to renew it from the sa
 In practice, a locally hosted AdGuard Home instance often responds faster than ISP-provided routers, but this behavior should not be relied upon as a strict guarantee.
 
 !!! note
-    macvlan networks isolate containers from the host by default. The FCOS host will not be able to directly communicate with the AdGuard Home container unless [`enable_host_proxy`](#adguardhomeenable_host_proxy) is set.
+    macvlan networks isolate containers from the host by default. The FCOS host will not be able to directly communicate with the AdGuard Home container unless [`host_proxy_ip`](#adguardhomehost_proxy_ip) is set.
 
 This template is **rootful**: the container needs the `NET_ADMIN`, `NET_RAW` and `NET_BIND_SERVICE` capabilities and a macvlan network, so its units are installed under `/etc/containers/systemd/` and its data lives in `/var/adguardhome`.
 
@@ -64,17 +64,11 @@ Static IP address assigned to the AdGuard Home instance.
 !!! note
     Ensure this IP is not and cannot be used by another device, e.g. it is not part of any DHCP IP range.
 
-## `adguardhome.enable_host_proxy`
+## `adguardhome.host_proxy_ip`
 
-Whether to create a macvlan interface on the host itself, bridged on the same physical interface, so that the host can reach the AdGuard Home container (and use it as its DNS server). Without it, the kernel drops traffic between the host and its macvlan children.
+Address of the host on the macvlan network, carried by a proxy interface. When set, the template creates a macvlan interface on the host itself (`adguardhome-proxy`), bridged on the same physical interface and carrying this address, so that the host can reach the AdGuard Home container (and use it as its DNS server). Without it, the kernel drops traffic between the host and its macvlan children.
 
-* **Type:** Boolean
-* **Example:** `true`
-
-## `adguardhome.host_proxy`
-
-Address of the host on that macvlan interface, in the macvlan subnet. Only read when `enable_host_proxy` is `true`.
-
-* **Type:** IP address
+* **Optional**
+* **Type:** IP address, in the macvlan subnet
 * **Purpose:** Address from which the host talks to AdGuard Home; also the address the other services see it from.
 * **Example:** `192.168.0.11`

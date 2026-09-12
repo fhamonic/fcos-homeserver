@@ -5,11 +5,11 @@ Configuration for the CouchDB backend of the [Obsidian Self-hosted LiveSync](htt
 The plugin synchronizes Obsidian vaults between devices through a CouchDB database.
 This template deploys a single CouchDB container, applies the settings expected by the plugin (mandatory authentication, CORS for the Obsidian desktop and mobile apps, raised request and document size limits) and creates the vault database at first boot, so the upstream initialization script does not need to be run.
 
-CouchDB is exposed over plain HTTP on the internal port and is meant to be published through a [Caddy](caddy.md) HTTPS redirection.
+CouchDB is exposed over plain HTTP on `http_port` and is meant to be published through a [Caddy](caddy.md) site.
 
 Once the server is up, in Obsidian, install the **Self-hosted LiveSync** community plugin and enter the remote database settings:
 
-* **URI:** `https://livesync.mydomain.com` (the Caddy route)
+* **URI:** `https://livesync.mydomain.com` (the Caddy site)
 * **Username** / **Password:** as configured below
 * **Database name:** as configured below
 
@@ -32,7 +32,7 @@ Port to listen for HTTP requests.
 * **Type:** Integer
 * **Example:** `3010`
 
-## `livesync.username`
+## `livesync.admin_username`
 
 Username of the CouchDB administrator account.
 
@@ -40,7 +40,7 @@ Username of the CouchDB administrator account.
 * **Purpose:** Used by the Obsidian plugin to authenticate.
 * **Example:** `admin`
 
-## `livesync.password`
+## `livesync.admin_password`
 
 Password of the CouchDB administrator account.
 

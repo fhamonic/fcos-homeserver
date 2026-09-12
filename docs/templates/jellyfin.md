@@ -27,9 +27,9 @@ List of bind mounts for media libraries.
 * **Format:** `host_path:container_path:options`
 * **Example:** `/var/hdd/Movies:/media/Movies:ro,Z`
 
-## `jellyfin.self_url`
+## `jellyfin.hostname`
 
-Public URL advertised by Jellyfin to clients.
+Public host name of the service, advertised to clients as `https://<hostname>`. It should match its [Caddy](caddy.md) site.
 
-* **Type:** Domain name
+* **Type:** Fully qualified domain name
 * **Example:** `jellyfin.mydomain.com`

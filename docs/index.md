@@ -37,16 +37,16 @@ caddy:
   image: docker.io/library/caddy:2.10
   http_port: 80
   https_port: 443
-  https_redirections:
-    - route: jellyfin.mydomain.com
-      internal_port: 3002
+  sites:
+    - hostname: jellyfin.mydomain.com
+      port: 3002
 
 jellyfin:
   image: docker.io/jellyfin/jellyfin:10
   http_port: 3002
   media_volumes:
     - /var/hdd/Movies:/media/Movies:ro,Z
-  self_url: jellyfin.mydomain.com
+  hostname: jellyfin.mydomain.com
 ```
 
 Each top-level key selects one [template](templates/index.md); the values under it are the only decisions the template leaves to you.
@@ -77,7 +77,7 @@ The main barrier to entry therefore remains the initial configuration, which is 
 - [**Maintenance**](getting-started/maintenance.md) — SSH access, the per-service users, reading logs and tweaking a running service.
 - [**Debugging services**](getting-started/debugging.md) — the commands for a service that does not come up: journal, Quadlet generator, health checks, volumes.
 - [**Templates**](templates/index.md) — every available service and the parameters it takes.
-- [**Design rationale**](design-rationale.md) — how the generated configuration maps to Fedora CoreOS, Ignition, systemd and Podman. Recommended reading before adapting the project to your own setup.
+- [**Design rationale**](design-rationale/index.md) — how the generated configuration maps to Fedora CoreOS, Ignition, systemd and Podman. Recommended reading before adapting the project to your own setup.
 - [**Adding a template**](contributing/adding-a-template.md) — writing a new service template, trying it on a running server with the ad hoc script, and documenting it.
 
 ## What is in the box

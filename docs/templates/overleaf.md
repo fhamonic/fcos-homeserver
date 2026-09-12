@@ -2,6 +2,13 @@
 
 Configuration for the [Overleaf](https://github.com/overleaf/overleaf) (ShareLaTeX) service, deployed as a pod of three containers: MongoDB, Redis and the application. A one-shot unit initializes the MongoDB replica set at first boot.
 
+## `overleaf.image`
+
+The image of Overleaf to deploy (the application is still named ShareLaTeX in some images).
+
+* **Type:** String
+* **Example:** `docker.io/rigon/sharelatex-full:6.0.0`
+
 ## `overleaf.mongo_image`
 
 The image of MongoDB used by Overleaf.
@@ -15,13 +22,6 @@ The image of Redis used by Overleaf.
 
 * **Type:** String
 * **Example:** `docker.io/library/redis:7.4`
-
-## `overleaf.sharelatex_image`
-
-The image for the Overleaf application (named ShareLaTeX for historical reasons).
-
-* **Type:** String
-* **Example:** `docker.io/rigon/sharelatex-full:6.0.0`
 
 ## `overleaf.http_port`
 
@@ -37,11 +37,11 @@ Display name of the Overleaf instance.
 * **Type:** String
 * **Example:** `My Overleaf`
 
-## `overleaf.self_url`
+## `overleaf.hostname`
 
-Public URL advertised by Overleaf to clients.
+Public host name of the service, used as `https://<hostname>` in the links Overleaf generates. It should match its [Caddy](caddy.md) site.
 
-* **Type:** Domain name
+* **Type:** Fully qualified domain name
 * **Example:** `overleaf.mydomain.com`
 
 ## `overleaf.admin_email`

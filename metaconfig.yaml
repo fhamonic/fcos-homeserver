@@ -9,13 +9,12 @@ adguardhome:
     subnet: 192.168.0.0/24
     gateway: 192.168.0.1
   ip: 192.168.0.10
-  enable_host_proxy: true
-  host_proxy: 192.168.0.11
+  host_proxy_ip: 192.168.0.11
 
 ext4_drives:
   - uuid: <BLOC-DEVICE-UUID>
     mount_point: /var/hdd
-    placeholder_folders:
+    placeholder_dirs:
       - Movies
       - Shows
       - Music
@@ -25,32 +24,32 @@ caddy:
   image: docker.io/library/caddy:2.10
   http_port: 80
   https_port: 443
-  https_redirections:
-    - route: jellyfin.mydomain.com
-      internal_port: 3002
-    - route: overleaf.mydomain.com
-      internal_port: 3004
-    - route: forgejo.mydomain.com
-      internal_port: 3005
-    - route: immich.mydomain.com
-      internal_port: 3006
-    - route: joplin.mydomain.com
-      internal_port: 3007
-    - route: livesync.mydomain.com
-      internal_port: 3010
-    - route: home.mydomain.com
-      internal_port: 3011
-    - route: mail.mydomain.com
-      internal_port: 3012
-    - route: mydomain.com
+  sites:
+    - hostname: jellyfin.mydomain.com
+      port: 3002
+    - hostname: overleaf.mydomain.com
+      port: 3004
+    - hostname: forgejo.mydomain.com
+      port: 3005
+    - hostname: immich.mydomain.com
+      port: 3006
+    - hostname: joplin.mydomain.com
+      port: 3007
+    - hostname: livesync.mydomain.com
+      port: 3010
+    - hostname: home.mydomain.com
+      port: 3011
+    - hostname: mail.mydomain.com
+      port: 3012
+    - hostname: mydomain.com
       redirect_to: https://home.mydomain.com{uri}
-    - route: wg.mydomain.com
-      custom: |
+    - hostname: wg.mydomain.com
+      directives: |
         @public not remote_ip 192.168.0.0/24
         respond @public 403
         reverse_proxy host.containers.internal:3008
-    - route: prometheus.mydomain.com
-      custom: |
+    - hostname: prometheus.mydomain.com
+      directives: |
         @public not remote_ip 192.168.0.0/24
         respond @public 403
         reverse_proxy host.containers.internal:3013
@@ -62,15 +61,15 @@ jellyfin:
     - /var/hdd/Movies:/media/Movies:ro,Z
     - /var/hdd/Shows:/media/Shows:ro,Z
     - /var/hdd/Music:/media/Music:ro,Z
-  self_url: jellyfin.mydomain.com
+  hostname: jellyfin.mydomain.com
 
 overleaf:
+  image: docker.io/rigon/sharelatex-full:6.0.0
   mongo_image: docker.io/mongo:8.0
   redis_image: docker.io/library/redis:7.4
-  sharelatex_image: docker.io/rigon/sharelatex-full:6.0.0
   http_port: 3004
   app_name: My Overleaf
-  self_url: overleaf.mydomain.com
+  hostname: overleaf.mydomain.com
   admin_email: <MY EMAIL>
 
 forgejo:
@@ -79,26 +78,26 @@ forgejo:
   ssh_port: 2222
 
 immich:
+  image: ghcr.io/immich-app/immich-server:v2
+  ml_image: ghcr.io/immich-app/immich-machine-learning:v2
   postgres_image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0
   valkey_image: docker.io/valkey/valkey:8
-  immich_ml_image: ghcr.io/immich-app/immich-machine-learning:v2
-  immich_image: ghcr.io/immich-app/immich-server:v2
   http_port: 3006
-  host_drive_type: SSD
-  photos_volume: /var/hdd/Photos
+  db_storage_type: SSD
+  photos_dir: /var/hdd/Photos
 
 joplin:
+  image: docker.io/joplin/server:3.5
   postgres_image: docker.io/postgres:16
-  joplin_image: docker.io/joplin/server:3.5
   http_port: 3007
-  self_url: joplin.mydomain.com
+  hostname: joplin.mydomain.com
 
 wg_easy:
   image: ghcr.io/wg-easy/wg-easy:15
   http_port: 3008
-  wg_port: 51821
-  username: admin
-  password: L0NgP@SsW0rD
+  wireguard_port: 51821
+  admin_username: admin
+  admin_password: L0NgP@SsW0rD
   host: example.com
 
 openwebui:
@@ -108,8 +107,8 @@ openwebui:
 livesync:
   image: docker.io/library/couchdb:3.5
   http_port: 3010
-  username: admin
-  password: L0NgP@SsW0rD
+  admin_username: admin
+  admin_password: L0NgP@SsW0rD
   database: obsidiannotes
 
 homepage:
@@ -176,7 +175,7 @@ stalwart:
   image: docker.io/stalwartlabs/stalwart:v0.16
   http_port: 3012
   smtp_port: 2525
-  self_url: mail.mydomain.com
+  hostname: mail.mydomain.com
   domain: mydomain.com
   admin_password: Sunny-Meadow-Cactus-42
   relay:
@@ -185,7 +184,7 @@ stalwart:
     username: me@mydomain.com
     password: <PROVIDER MAILBOX PASSWORD>
   sender:
-    name: noreply
+    username: noreply
     password: Sunny-Meadow-Cactus-42
 
 prometheus:

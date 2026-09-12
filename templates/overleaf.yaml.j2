@@ -156,7 +156,7 @@ storage:
           Pod=overleaf.pod
           StartWithPod=false
           ContainerName=overleaf-sharelatex
-          Image={{ overleaf.sharelatex_image }}
+          Image={{ overleaf.image }}
           AutoUpdate=registry
 
           Volume=/var/overleaf:/var/lib/overleaf:Z
@@ -171,7 +171,7 @@ storage:
           Environment=ENABLED_LINKED_FILE_TYPES=project_file,project_output_file
           Environment=ENABLE_CONVERSIONS=true
           Environment=EMAIL_CONFIRMATION_DISABLED=false
-          Environment=OVERLEAF_SITE_URL={{ overleaf.self_url }}
+          Environment=OVERLEAF_SITE_URL=https://{{ overleaf.hostname }}
           
           [Service]
           TimeoutStartSec=300

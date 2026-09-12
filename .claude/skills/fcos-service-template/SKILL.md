@@ -110,10 +110,11 @@ literally as the ordering target (`<key>.service`, not `.container`) in
 ## 5. Parameters and metaconfig
 
 Expose only what a user must decide: images, `http_port`, credentials,
-public URL (`self_url`), host paths. Hard-code internal passwords between
+public host name (`hostname`), host paths, named as `docs/design-rationale/terminology.md`
+says (`image`, `<component>_image`, `<protocol>_port`, `admin_*`, `*_dir`). Hard-code internal passwords between
 containers of the same pod (existing templates do). Add an example block to
 `metaconfig.yaml` (next free port in the 30xx range) and a matching
-`caddy.https_redirections` route. Never edit `secret.yaml`.
+`caddy.sites` entry. Never edit `secret.yaml`.
 
 ## 6. Validate before reporting done
 

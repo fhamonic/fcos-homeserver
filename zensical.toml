@@ -36,7 +36,10 @@ nav = [
     { "stalwart" = "templates/stalwart.md" },
     { "prometheus" = "templates/prometheus.md" },
   ] },
-  { "Design rationale" = "design-rationale.md" },
+  { "Design rationale" = [
+    { "Architecture" = "design-rationale/index.md" },
+    { "Terminology" = "design-rationale/terminology.md" },
+  ] },
   { "Contributing" = [
     { "Adding a template" = "contributing/adding-a-template.md" },
   ] },

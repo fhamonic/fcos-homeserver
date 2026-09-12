@@ -38,9 +38,9 @@ sudo coreos-installer install /dev/xxx --ignition-url http://192.168.xxx.xxx:800
 The server provisions itself during the first boot. Container images are pulled at that point, so the first start of each service takes a few minutes.
 
 !!! note
-    If you reprovision several times, comment out the [Caddy HTTPS redirections](../templates/caddy.md#caddyhttps_redirections) in between: each installation requests new certificates, and too many requests get the address rate limited by Let's Encrypt.
+    If you reprovision several times, comment out the [Caddy sites](../templates/caddy.md#caddysites) in between: each installation requests new certificates, and too many requests get the address rate limited by Let's Encrypt.
 
 ## Next steps
 
 - [Maintenance](maintenance.md) explains how to log in, check services and read their logs.
-- The [design rationale](../design-rationale.md) describes what the generated configuration puts on the system.
+- The [design rationale](../design-rationale/index.md) describes what the generated configuration puts on the system.

@@ -93,7 +93,7 @@ storage:
 
           # URL published in the OAuth/JMAP discovery documents: the web UI
           # login only works when it matches the address in the browser.
-          Environment=STALWART_PUBLIC_URL=https://{{ stalwart.self_url }}
+          Environment=STALWART_PUBLIC_URL=https://{{ stalwart.hostname }}
           # Read by the relay route created by stalwart-init.sh
           Environment=STALWART_RELAY_PASSWORD={{ stalwart.relay.password }}
 
@@ -191,7 +191,7 @@ storage:
           if jmap Bootstrap/get '{"ids":["singleton"]}' | grep -q serverHostname; then
             echo "Running the setup wizard..."
             jmap Bootstrap/set '{"update":{"singleton":{
-              "serverHostname":"{{ stalwart.self_url }}",
+              "serverHostname":"{{ stalwart.hostname }}",
               "defaultDomain":"{{ stalwart.domain }}",
               "requestTlsCertificate":false,
               "generateDkimKeys":true,
@@ -242,8 +242,8 @@ storage:
 
           # The address of an account is <name>@<domain> (server-set)
           echo "Creating the application account..."
-          [ -n "$(query_id Account '{{ stalwart.sender.name }}')" ] || jmap Account/set "{\"create\":{\"a\":{
-            \"@type\":\"User\",\"name\":\"{{ stalwart.sender.name }}\",\"domainId\":\"$domain\",
+          [ -n "$(query_id Account '{{ stalwart.sender.username }}')" ] || jmap Account/set "{\"create\":{\"a\":{
+            \"@type\":\"User\",\"name\":\"{{ stalwart.sender.username }}\",\"domainId\":\"$domain\",
             \"description\":\"Applications\",\"roles\":{\"@type\":\"User\"},
             \"credentials\":{\"0\":{\"@type\":\"Password\",\"secret\":\"{{ stalwart.sender.password }}\"}}}}}" | check
 

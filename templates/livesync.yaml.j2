@@ -108,11 +108,11 @@ storage:
           Volume=couchdb-data.volume:/opt/couchdb/data
           Volume=/home/u_livesync/local.ini:/opt/couchdb/etc/local.d/livesync.ini:ro,Z
 
-          Environment=COUCHDB_USER={{ livesync.username }}
-          Environment=COUCHDB_PASSWORD={{ livesync.password }}
+          Environment=COUCHDB_USER={{ livesync.admin_username }}
+          Environment=COUCHDB_PASSWORD={{ livesync.admin_password }}
 
           # require_valid_user also guards /_up, and CouchDB only listens on IPv4
-          HealthCmd=curl -sf -u '{{ livesync.username }}:{{ livesync.password }}' http://127.0.0.1:5984/_up || exit 1
+          HealthCmd=curl -sf -u '{{ livesync.admin_username }}:{{ livesync.admin_password }}' http://127.0.0.1:5984/_up || exit 1
           HealthInterval=10s
           HealthTimeout=10s
           HealthRetries=5
@@ -139,12 +139,12 @@ storage:
           # 127.0.0.1 rather than localhost: CouchDB has no IPv6 listener, and
           # pasta resets a forwarded ::1 connection instead of refusing it.
           ExecStart=/bin/sh -c " \
-            while ! curl -sf -u '{{ livesync.username }}:{{ livesync.password }}' \
+            while ! curl -sf -u '{{ livesync.admin_username }}:{{ livesync.admin_password }}' \
                 http://127.0.0.1:{{ livesync.http_port }}/_up > /dev/null; do \
               echo \"Waiting for CouchDB...\"; \
               sleep 1; \
             done; \
-            curl -sf -X PUT -u '{{ livesync.username }}:{{ livesync.password }}' \
+            curl -sf -X PUT -u '{{ livesync.admin_username }}:{{ livesync.admin_password }}' \
               http://127.0.0.1:{{ livesync.http_port }}/{{ livesync.database }}"
           ExecStart=/usr/bin/touch /var/home/u_livesync/%N.stamp
           Restart=no

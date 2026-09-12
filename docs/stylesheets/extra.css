@@ -1,7 +1,6 @@
 /* fcos-homeserver brand palette:
    FCOS_blue      #3c6eb4
    FCOS_red       #de4284
-   PODMAN_purple  #892ca0
    PODMAN_grey    #808080
    PODMAN_blue_light #afd5f5 */
 
@@ -12,7 +11,7 @@
   --md-accent-fg-color: #c4306f; /* darkened FCOS_red: the raw value scores 4.02:1 under white text */
   --md-accent-fg-color--transparent: #c4306f1a;
   --md-typeset-a-color: #3c6eb4;
-  --fcos-purple: #892ca0;
+  --fcos-red: #de4284; /* raw: only used for hairlines, never under text */
   --fcos-hero-title: #3c6eb4;
   /* the recessed nav tier. Material's --md-default-fg-color--light (55%) is
      meant for body-adjacent prose, and reads washed out on 0.7rem nav text. */
@@ -25,11 +24,11 @@
   --md-primary-fg-color: #3c6eb4;
   --md-primary-fg-color--light: #afd5f5;
   --md-primary-fg-color--dark: #2f5790;
-  /* lightened tints of FCOS_red / PODMAN_purple to keep contrast on dark */
+  /* lightened tint of FCOS_red to keep contrast on dark */
   --md-accent-fg-color: #e8709f;
   --md-accent-fg-color--transparent: #e8709f1a;
   --md-typeset-a-color: #afd5f5;
-  --fcos-purple: #b877c9;
+  --fcos-red: #e8709f;
   --fcos-hero-title: #afd5f5;
   --fcos-nav-dim: hsla(var(--md-hue), 15%, 90%, 0.68);
   /* text knocked out of the accent, e.g. buttons on hover. The shipped #fff
@@ -117,12 +116,12 @@
   opacity: 1;
 }
 
-/* purple as a discreet structural accent */
+/* red as a discreet structural accent */
 .md-typeset table:not([class]) th {
-  border-bottom: 0.12rem solid var(--fcos-purple);
+  border-bottom: 0.12rem solid var(--fcos-red);
 }
 .md-typeset blockquote {
-  border-left-color: var(--fcos-purple);
+  border-left-color: var(--fcos-red);
 }
 
 /* Navigation hierarchy.
@@ -143,7 +142,7 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   padding-bottom: 0.3rem;
-  border-bottom: 0.05rem solid var(--fcos-purple);
+  border-bottom: 0.05rem solid var(--fcos-red);
 }
 /* left sidebar — pages within a section recede */
 :where(.md-nav--primary .md-nav__item--section > .md-nav)
@@ -205,7 +204,7 @@
   width: 4rem;
   margin: 1.2rem auto 0;
   border: none;
-  border-top: 0.2rem solid var(--fcos-purple);
+  border-top: 0.2rem solid var(--fcos-red);
 }
 .fcos-hero .md-button {
   margin: 0.25rem 0.35rem;

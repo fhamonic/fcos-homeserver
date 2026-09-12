@@ -1,0 +1,219 @@
+variant: fcos
+version: 1.6.0
+passwd:
+  groups:
+    - name: g_matrix_rtc
+      gid: {{ 1000 + id }}
+  users:
+    - name: u_matrix_rtc
+      uid: {{ 1000 + id }}
+      groups: [g_matrix_rtc]
+storage:
+  directories:
+    # ######################### rootless boilerplate ##########################
+    - path: /home/u_matrix_rtc/.config
+      mode: 0755
+      user: { name: u_matrix_rtc }
+      group: { name: g_matrix_rtc }
+    - path: /home/u_matrix_rtc/.config/containers
+      mode: 0755
+      user: { name: u_matrix_rtc }
+      group: { name: g_matrix_rtc }
+    - path: /home/u_matrix_rtc/.config/containers/systemd
+      mode: 0755
+      user: { name: u_matrix_rtc }
+      group: { name: g_matrix_rtc }
+    - path: /home/u_matrix_rtc/.config/systemd
+      mode: 0755
+      user: { name: u_matrix_rtc }
+      group: { name: g_matrix_rtc }
+    - path: /home/u_matrix_rtc/.config/systemd/user
+      mode: 0755
+      user: { name: u_matrix_rtc }
+      group: { name: g_matrix_rtc }
+    - path: /home/u_matrix_rtc/.config/systemd/user/default.target.wants
+      mode: 0755
+      user: { name: u_matrix_rtc }
+      group: { name: g_matrix_rtc }
+  links:
+    - path: /home/u_matrix_rtc/.config/systemd/user/default.target.wants/matrix_rtc.service
+      user: { name: u_matrix_rtc }
+      group: { name: g_matrix_rtc }
+      target: /home/u_matrix_rtc/.config/containers/systemd/matrix_rtc.pod
+      hard: false
+  files:
+    - path: /var/lib/systemd/linger/u_matrix_rtc
+      mode: 0644
+    # ############################# Configuration #############################
+    # https://github.com/livekit/livekit/blob/master/config-sample.yaml
+    - path: /home/u_matrix_rtc/livekit.yaml
+      mode: 0644
+      user: { name: u_matrix_rtc }
+      group: { name: g_matrix_rtc }
+      contents:
+        inline: |
+          # Signaling (WebSocket), published through Caddy
+          port: 7880
+          # API key and secret shared with the authorization service, generated
+          # at first boot by matrix_rtc-init-keys.service
+          key_file: /config/keys.yaml
+          rtc:
+            # Media: one UDP port (a range would be faster but is one more
+            # thing to forward) and a TCP fallback, both forwarded on the
+            # router under the same numbers, since they are advertised to the
+            # clients as is.
+            udp_port: {{ matrix_rtc.webrtc_udp_port }}
+            tcp_port: {{ matrix_rtc.webrtc_tcp_port }}
+            # Discover the public address with STUN at start (residential
+            # addresses change), and do not try to reach it from inside: most
+            # home routers refuse that loop (no hairpin NAT).
+            use_external_ip: true
+            skip_external_ip_validation: true
+          # Relay for clients whose network blocks the media ports. Plain UDP:
+          # TURN over TLS would need port 443, which belongs to Caddy.
+          turn:
+            enabled: true
+            domain: {{ matrix_rtc.hostname }}
+            udp_port: {{ matrix_rtc.turn_port }}
+          room:
+            # Rooms are created by the authorization service, which checks the
+            # Matrix identity first
+            auto_create: false
+          # Participant events, so the authorization service can end the
+          # Matrix call membership of a participant that dropped
+          webhook:
+            api_key: matrix
+            urls:
+              - http://localhost:8080/sfu_webhook
+          logging:
+            level: info
+    # ################################## Pod ##################################
+    - path: /home/u_matrix_rtc/.config/containers/systemd/matrix_rtc.pod
+      mode: 0644
+      user: { name: u_matrix_rtc }
+      group: { name: g_matrix_rtc }
+      contents:
+        inline: |
+          [Unit]
+          Description=Matrix RTC Pod
+
+          [Pod]
+          PodName=matrix_rtc
+          ServiceName=matrix_rtc
+          PublishPort={{ matrix_rtc.http_port }}:7880
+          PublishPort={{ matrix_rtc.auth_port }}:8080
+          PublishPort={{ matrix_rtc.webrtc_udp_port }}:{{ matrix_rtc.webrtc_udp_port }}/udp
+          PublishPort={{ matrix_rtc.webrtc_tcp_port }}:{{ matrix_rtc.webrtc_tcp_port }}
+          PublishPort={{ matrix_rtc.turn_port }}:{{ matrix_rtc.turn_port }}/udp
+          # The authorization service calls the LiveKit API and Synapse at
+          # their public addresses: resolve them to this host, so the calls
+          # go to Caddy on the LAN instead of out to the router and back
+          # (hairpin NAT, which most home routers refuse).
+{%- for host in [matrix_rtc.hostname, matrix_rtc.homeserver.domain, matrix_rtc.homeserver.hostname] | unique %}
+          AddHost={{ host }}:host-gateway
+{%- endfor %}
+    # ################################ LiveKit ################################
+    - path: /home/u_matrix_rtc/.config/containers/systemd/matrix_rtc-livekit.container
+      mode: 0644
+      user: { name: u_matrix_rtc }
+      group: { name: g_matrix_rtc }
+      contents:
+        inline: |
+          [Unit]
+          Description=LiveKit SFU (Matrix RTC media server)
+          Wants=network-online.target
+          Requires=matrix_rtc-init-keys.service
+          After=network-online.target matrix_rtc-init-keys.service
+
+          [Container]
+          Pod=matrix_rtc.pod
+          ContainerName=matrix_rtc-livekit
+          Image={{ matrix_rtc.image }}
+          AutoUpdate=registry
+
+          Volume=/home/u_matrix_rtc/livekit.yaml:/config/livekit.yaml:ro,Z
+          Volume=/home/u_matrix_rtc/keys.yaml:/config/keys.yaml:ro,Z
+          Exec=--config /config/livekit.yaml
+
+          # The image is busybox-based: wget, no curl
+          HealthCmd=wget -qO /dev/null http://127.0.0.1:7880/ || exit 1
+          HealthInterval=15s
+          HealthTimeout=5s
+          HealthRetries=5
+
+          [Service]
+          TimeoutStartSec=300
+          Restart=always
+          RestartSec=10
+    # ######################## Authorization service ##########################
+    # https://github.com/element-hq/lk-jwt-service
+    - path: /home/u_matrix_rtc/.config/containers/systemd/matrix_rtc-auth.container
+      mode: 0644
+      user: { name: u_matrix_rtc }
+      group: { name: g_matrix_rtc }
+      contents:
+        inline: |
+          [Unit]
+          Description=Matrix RTC authorization service (LiveKit tokens)
+          Wants=network-online.target
+          Requires=matrix_rtc-init-keys.service
+          After=network-online.target matrix_rtc-init-keys.service
+
+          [Container]
+          Pod=matrix_rtc.pod
+          ContainerName=matrix_rtc-auth
+          Image={{ matrix_rtc.auth_image }}
+          AutoUpdate=registry
+
+          Volume=/home/u_matrix_rtc/keys.yaml:/config/keys.yaml:ro,Z
+
+          # Handed to the clients as the SFU address, and used for the LiveKit
+          # API (see AddHost in the pod)
+          Environment=LIVEKIT_URL=wss://{{ matrix_rtc.hostname }}
+          Environment=LIVEKIT_KEY_FILE=/config/keys.yaml
+          Environment=LIVEKIT_JWT_BIND=:8080
+          # Only members of the home server can open calls. Their identity
+          # is verified on the openid endpoint found through
+          # https://<domain>/.well-known/matrix/server (see AddHost).
+          Environment=LIVEKIT_FULL_ACCESS_HOMESERVERS={{ matrix_rtc.homeserver.domain }}
+          # The client-server API (call membership housekeeping) directly on
+          # the host, without the .well-known/matrix/client lookup
+          Environment=LIVEKIT_CS_API_URL_OVERRIDES={{ matrix_rtc.homeserver.domain }}=http://host.containers.internal:{{ matrix_rtc.homeserver.port }}
+
+          [Service]
+          TimeoutStartSec=300
+          Restart=always
+          RestartSec=10
+    # ############################## API key ##################################
+    - path: /home/u_matrix_rtc/.config/systemd/user/matrix_rtc-init-keys.service
+      mode: 0644
+      user: { name: u_matrix_rtc }
+      group: { name: g_matrix_rtc }
+      contents:
+        inline: |
+          [Unit]
+          Description=Generate the LiveKit API secret
+          ConditionPathExists=!/var/home/u_matrix_rtc/keys.yaml
+
+          [Service]
+          Type=oneshot
+          ExecStart=/var/home/u_matrix_rtc/matrix_rtc-init-keys.sh
+          Restart=no
+    - path: /home/u_matrix_rtc/matrix_rtc-init-keys.sh
+      mode: 0755
+      user: { name: u_matrix_rtc }
+      group: { name: g_matrix_rtc }
+      contents:
+        inline: |
+          #!/bin/bash
+          # One "key: secret" line, read by LiveKit as a YAML map and by the
+          # authorization service as a colon-separated pair. LiveKit refuses
+          # the file when it is readable by others, and a secret shorter than
+          # 32 characters.
+          set -euo pipefail
+          umask 077
+          # No head after tr: under pipefail a reader that stops early fails
+          # the pipeline
+          secret=$(head -c 48 /dev/urandom | base64 | tr -d '/+=\n')
+          echo "matrix: $secret" > /var/home/u_matrix_rtc/keys.yaml
+          echo "LiveKit API secret generated"

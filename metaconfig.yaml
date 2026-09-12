@@ -32,8 +32,31 @@ caddy:
       port: 3011
     - hostname: mail.mydomain.com
       port: 3012
+    - hostname: matrix.mydomain.com
+      port: 3014
+    - hostname: chat.mydomain.com
+      port: 3015
+    # Calls: the authorization service under /livekit/jwt, the SFU elsewhere
+    - hostname: rtc.mydomain.com
+      directives: |
+        handle_path /livekit/jwt/* {
+            reverse_proxy host.containers.internal:3017
+        }
+        handle {
+            reverse_proxy host.containers.internal:3016
+        }
+    # Matrix clients discover the homeserver of @user:mydomain.com at
+    # https://mydomain.com/.well-known/matrix/client, which Synapse serves;
+    # the call service (matrix_rtc) verifies members on the OpenID endpoint.
     - hostname: mydomain.com
-      redirect_to: https://home.mydomain.com{uri}
+      directives: |
+        @matrix path /.well-known/matrix/* /_matrix/federation/v1/openid/*
+        handle @matrix {
+            reverse_proxy host.containers.internal:3014
+        }
+        handle {
+            redir https://home.mydomain.com{uri} permanent
+        }
     - hostname: wg.mydomain.com
       directives: |
         @public not remote_ip 192.168.0.0/24
@@ -222,3 +245,31 @@ wg_easy:
   admin_username: admin
   admin_password: L0NgP@SsW0rD
   host: example.com
+
+matrix:
+  image: ghcr.io/element-hq/synapse:v1.160.0
+  element_image: docker.io/vectorim/element-web:v1.12.27
+  postgres_image: docker.io/postgres:17
+  http_port: 3014
+  element_port: 3015
+  hostname: matrix.mydomain.com
+  element_hostname: chat.mydomain.com
+  domain: mydomain.com
+  rtc_hostname: rtc.mydomain.com
+  admin_username: admin
+  admin_password: L0NgP@SsW0rD
+
+matrix_rtc:
+  image: docker.io/livekit/livekit-server:v1.13
+  auth_image: ghcr.io/element-hq/lk-jwt-service:0.7.0
+  http_port: 3016
+  auth_port: 3017
+  # Forwarded on the router to the server, under the same numbers
+  webrtc_udp_port: 7882
+  webrtc_tcp_port: 7881
+  turn_port: 3478
+  hostname: rtc.mydomain.com
+  homeserver:
+    domain: mydomain.com
+    hostname: matrix.mydomain.com
+    port: 3014

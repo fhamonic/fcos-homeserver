@@ -35,6 +35,8 @@ nav = [
     { "homepage" = "templates/homepage.md" },
     { "stalwart" = "templates/stalwart.md" },
     { "prometheus" = "templates/prometheus.md" },
+    { "matrix" = "templates/matrix.md" },
+    { "matrix_rtc" = "templates/matrix_rtc.md" },
   ] },
   { "Design rationale" = [
     { "Architecture" = "design-rationale/index.md" },

@@ -19,6 +19,8 @@ Each top-level key of `metaconfig.yaml` selects the template of the same name an
 | [homepage](homepage.md) | Service | ✓ | customizable dashboard listing the server's services and bookmarks |
 | [stalwart](stalwart.md) | Service | ✓ | outgoing mail relay for the other services (SMTP submission + DKIM) |
 | [prometheus](prometheus.md) | Service | ✓ | metrics collection and time series database, backing the Homepage widgets |
+| [matrix](matrix.md) | Service | ✓ | private chat server (Discord-like) with the Element web client, not federated |
+| [matrix_rtc](matrix_rtc.md) | Service | ✓ | voice and video calls for the Matrix server (LiveKit SFU + Element Call backend) |
 
 **Rootless** services run as a dedicated unprivileged user (`u_<template>`), with their Quadlet units under that user's home; the others need capabilities or host networking that only root can grant and are installed system-wide under `/etc/containers/systemd/`. See the [design rationale](../design-rationale/index.md) for what each kind puts on the system, and the [maintenance page](../getting-started/maintenance.md) for how to reach them.
 

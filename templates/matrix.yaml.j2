@@ -1,0 +1,391 @@
+{#- User IDs are @name:<server_name>; it can never change once accounts exist -#}
+{%- set server_name = matrix.domain if matrix.domain is defined else matrix.hostname -%}
+variant: fcos
+version: 1.6.0
+passwd:
+  groups:
+    - name: g_matrix
+      gid: {{ 1000 + id }}
+  users:
+    - name: u_matrix
+      uid: {{ 1000 + id }}
+      groups: [g_matrix]
+storage:
+  directories:
+    # ######################### rootless boilerplate ##########################
+    - path: /home/u_matrix/.config
+      mode: 0755
+      user: { name: u_matrix }
+      group: { name: g_matrix }
+    - path: /home/u_matrix/.config/containers
+      mode: 0755
+      user: { name: u_matrix }
+      group: { name: g_matrix }
+    - path: /home/u_matrix/.config/containers/systemd
+      mode: 0755
+      user: { name: u_matrix }
+      group: { name: g_matrix }
+    - path: /home/u_matrix/.config/systemd
+      mode: 0755
+      user: { name: u_matrix }
+      group: { name: g_matrix }
+    - path: /home/u_matrix/.config/systemd/user
+      mode: 0755
+      user: { name: u_matrix }
+      group: { name: g_matrix }
+    - path: /home/u_matrix/.config/systemd/user/default.target.wants
+      mode: 0755
+      user: { name: u_matrix }
+      group: { name: g_matrix }
+  links:
+    - path: /home/u_matrix/.config/systemd/user/default.target.wants/matrix.service
+      user: { name: u_matrix }
+      group: { name: g_matrix }
+      target: /home/u_matrix/.config/containers/systemd/matrix.pod
+      hard: false
+  files:
+    - path: /var/lib/systemd/linger/u_matrix
+      mode: 0644
+    # ############################# Configuration #############################
+    # https://element-hq.github.io/synapse/latest/usage/configuration/config_documentation.html
+    - path: /home/u_matrix/homeserver.yaml
+      mode: 0644
+      user: { name: u_matrix }
+      group: { name: g_matrix }
+      contents:
+        inline: |
+          server_name: {{ server_name }}
+          public_baseurl: https://{{ matrix.hostname }}/
+          pid_file: /data/homeserver.pid
+          log_config: /config/log.config
+          signing_key_path: /data/signing.key
+          # Created by Synapse at first start; also seeds the macaroon key
+          registration_shared_secret_path: /data/registration.secret
+          report_stats: false
+
+          # Client-server API only: no federation resource, so the
+          # server-server API is not even served. openid is the single
+          # endpoint the RTC authorization service verifies identities with.
+          listeners:
+            - port: 8008
+              type: http
+              tls: false
+              x_forwarded: true
+              resources:
+                - names: [client{% if matrix.rtc_hostname is defined %}, openid{% endif %}]
+                  compress: false
+
+          # An empty whitelist is the documented way to refuse federation
+          # with every server; with no remote server there are no remote
+          # signing keys to fetch either.
+          federation_domain_whitelist: []
+          trusted_key_servers: []
+          allow_public_rooms_over_federation: false
+
+          database:
+            name: psycopg2
+            args:
+              user: synapse
+              password: Xw4bV9tLq2mRn7Kd
+              dbname: synapse
+              host: localhost
+              port: 5432
+              cp_min: 5
+              cp_max: 10
+
+          media_store_path: /data/media_store
+          max_upload_size: 100M
+
+          url_preview_enabled: true
+          url_preview_ip_range_blacklist:
+            - 127.0.0.0/8
+            - 10.0.0.0/8
+            - 172.16.0.0/12
+            - 192.168.0.0/16
+            - 100.64.0.0/10
+            - 192.0.0.0/24
+            - 169.254.0.0/16
+            - 192.88.99.0/24
+            - 198.18.0.0/15
+            - 192.0.2.0/24
+            - 198.51.100.0/24
+            - 203.0.113.0/24
+            - 224.0.0.0/4
+            - ::1/128
+            - fe80::/10
+            - fc00::/7
+            - 2001:db8::/32
+            - ff00::/8
+            - fec0::/10
+
+          # Accounts are created with a registration token issued by an
+          # administrator (see the documentation page)
+          enable_registration: true
+          registration_requires_token: true
+
+          # Every member can find every other one, not only those sharing a
+          # room with them
+          user_directory:
+            search_all_users: true
+{%- if matrix.rtc_hostname is defined %}
+
+          # Calls through Element Call, backed by the matrix_rtc template
+          # https://github.com/element-hq/element-call/blob/main/docs/self_hosting.md
+          experimental_features:
+            # MatrixRTC transports endpoint (MSC4519)
+            msc4143_enabled: true
+            # state_after in sync v2 (MSC4222), for reliable call membership
+            msc4222_enabled: true
+          # Delayed events (MSC4140): a participant's membership expires by
+          # itself when its client vanishes
+          max_event_delay_duration: 24h
+          # Rate limits sized for the key sharing and heart-beats of a call
+          rc_message:
+            per_second: 0.5
+            burst_count: 30
+          rc_delayed_event_mgmt:
+            per_second: 1
+            burst_count: 20
+          matrix_rtc:
+            transports:
+              - type: livekit
+                livekit_service_url: https://{{ matrix.rtc_hostname }}/livekit/jwt
+          # The same announcement in .well-known/matrix/client, for clients
+          # that predate the transports endpoint
+          extra_well_known_client_content:
+            org.matrix.msc4143.rtc_foci:
+              - type: livekit
+                livekit_service_url: https://{{ matrix.rtc_hostname }}/livekit/jwt
+          # The authorization service locates the openid endpoint the way
+          # federation would: .well-known/matrix/server, else port 8448. This
+          # points it at hostname:443, where only openid is served.
+          serve_server_wellknown: true
+{%- endif %}
+    - path: /home/u_matrix/log.config
+      mode: 0644
+      user: { name: u_matrix }
+      group: { name: g_matrix }
+      contents:
+        inline: |
+          version: 1
+          formatters:
+            precise:
+              format: '%(asctime)s - %(name)s - %(lineno)d - %(levelname)s - %(request)s - %(message)s'
+          handlers:
+            console:
+              class: logging.StreamHandler
+              formatter: precise
+          loggers:
+            synapse.storage.SQL:
+              level: INFO
+          root:
+            level: INFO
+            handlers: [console]
+          disable_existing_loggers: false
+    # https://github.com/element-hq/element-web/blob/develop/docs/config.md
+    - path: /home/u_matrix/element-config.json
+      mode: 0644
+      user: { name: u_matrix }
+      group: { name: g_matrix }
+      contents:
+        inline: |
+          {
+            "default_server_config": {
+              "m.homeserver": {
+                "base_url": "https://{{ matrix.hostname }}",
+                "server_name": "{{ server_name }}"
+              }
+            },
+            "disable_custom_urls": true,
+            "disable_guests": true,
+            "disable_3pid_login": true,
+            "default_federate": false,
+            "show_labs_settings": false,
+            "room_directory": {
+              "servers": ["{{ server_name }}"]
+            },
+{%- if matrix.rtc_hostname is defined %}
+            "element_call": {
+              "use_exclusively": true
+            },
+{%- endif %}
+            "setting_defaults": {
+              "UIFeature.identityServer": false,
+              "UIFeature.thirdPartyId": false
+            }
+          }
+    # ################################## Pod ##################################
+    - path: /home/u_matrix/.config/containers/systemd/matrix.pod
+      mode: 0644
+      user: { name: u_matrix }
+      group: { name: g_matrix }
+      contents:
+        inline: |
+          [Unit]
+          Description=Matrix Pod
+
+          [Pod]
+          PodName=matrix
+          ServiceName=matrix
+          PublishPort={{ matrix.http_port }}:8008
+          PublishPort={{ matrix.element_port }}:8080
+    # ################################ Volumes ################################
+    - path: /home/u_matrix/.config/containers/systemd/postgres-data.volume
+      mode: 0644
+      user: { name: u_matrix }
+      group: { name: g_matrix }
+      contents:
+        inline: |
+          [Volume]
+          VolumeName=postgres-data
+    - path: /home/u_matrix/.config/containers/systemd/synapse-data.volume
+      mode: 0644
+      user: { name: u_matrix }
+      group: { name: g_matrix }
+      contents:
+        inline: |
+          [Volume]
+          VolumeName=synapse-data
+    # ############################## PostgreSQL ###############################
+    - path: /home/u_matrix/.config/containers/systemd/matrix-postgres.container
+      mode: 0644
+      user: { name: u_matrix }
+      group: { name: g_matrix }
+      contents:
+        inline: |
+          [Unit]
+          Description=Matrix PostgreSQL Database
+
+          [Container]
+          Pod=matrix.pod
+          ContainerName=matrix-postgres
+          Image={{ matrix.postgres_image }}
+          AutoUpdate=registry
+
+          Volume=postgres-data.volume:/var/lib/postgresql/data
+
+          Environment=POSTGRES_DB=synapse
+          Environment=POSTGRES_USER=synapse
+          Environment=POSTGRES_PASSWORD=Xw4bV9tLq2mRn7Kd
+          # Synapse refuses a database whose collation is not C
+          Environment=POSTGRES_INITDB_ARGS=--encoding=UTF8 --locale=C --data-checksums
+
+          # Over TCP rather than the socket: the temporary server of the first
+          # initialization only listens on the socket and would pass the probe
+          HealthCmd=pg_isready -h 127.0.0.1 -U synapse -d synapse || exit 1
+          HealthInterval=10s
+          HealthTimeout=5s
+          HealthRetries=5
+          # Synapse aborts when the database is unreachable at start, so the
+          # unit is only started once the probe passes
+          Notify=healthy
+
+          [Service]
+          TimeoutStartSec=300
+          Restart=always
+          RestartSec=10
+    # ################################ Synapse ################################
+    - path: /home/u_matrix/.config/containers/systemd/matrix-synapse.container
+      mode: 0644
+      user: { name: u_matrix }
+      group: { name: g_matrix }
+      contents:
+        inline: |
+          [Unit]
+          Description=Synapse Matrix homeserver
+          Requires=matrix-postgres.container
+          After=matrix-postgres.container
+          Wants=matrix-init-admin.service
+
+          [Container]
+          Pod=matrix.pod
+          ContainerName=matrix-synapse
+          Image={{ matrix.image }}
+          AutoUpdate=registry
+          # Run as the image's synapse uid rather than letting the entrypoint
+          # switch to it: /data is not in the image, so Podman gives the fresh
+          # volume to the container's user, which the entrypoint's gosu step
+          # (root at that point) would not be.
+          User=991:991
+
+          Volume=synapse-data.volume:/data
+          Volume=/home/u_matrix/homeserver.yaml:/config/homeserver.yaml:ro,Z
+          Volume=/home/u_matrix/log.config:/config/log.config:ro,Z
+
+          Environment=SYNAPSE_CONFIG_PATH=/config/homeserver.yaml
+
+          HealthCmd=curl -sf http://127.0.0.1:8008/health || exit 1
+          HealthInterval=15s
+          HealthTimeout=5s
+          HealthRetries=5
+          Notify=healthy
+
+          [Service]
+          # Synapse only writes its signing key in its generate mode, which
+          # exits afterwards; the step is a no-op once the key exists.
+          ExecStartPre=/usr/bin/podman run --rm --pull=missing --user 991:991 \
+            -v synapse-data:/data \
+            -v /home/u_matrix/homeserver.yaml:/config/homeserver.yaml:ro,Z \
+            -v /home/u_matrix/log.config:/config/log.config:ro,Z \
+            -e SYNAPSE_CONFIG_PATH=/config/homeserver.yaml \
+            {{ matrix.image }} run --generate-keys
+          TimeoutStartSec=300
+          Restart=always
+          RestartSec=10
+    # ############################## Element web ##############################
+    - path: /home/u_matrix/.config/containers/systemd/matrix-element.container
+      mode: 0644
+      user: { name: u_matrix }
+      group: { name: g_matrix }
+      contents:
+        inline: |
+          [Unit]
+          Description=Element web client
+
+          [Container]
+          Pod=matrix.pod
+          ContainerName=matrix-element
+          Image={{ matrix.element_image }}
+          AutoUpdate=registry
+
+          # The entrypoint copies /app/config*.json to a writable directory,
+          # so a read-only mount is fine
+          Volume=/home/u_matrix/element-config.json:/app/config.json:ro,Z
+
+          # nginx runs unprivileged in the image: an unprivileged port
+          Environment=ELEMENT_WEB_PORT=8080
+
+          [Service]
+          TimeoutStartSec=300
+          Restart=always
+          RestartSec=10
+    # ########################## Administrator account ########################
+    - path: /home/u_matrix/.config/systemd/user/matrix-init-admin.service
+      mode: 0644
+      user: { name: u_matrix }
+      group: { name: g_matrix }
+      contents:
+        inline: |
+          [Unit]
+          Description=Create the Matrix administrator account
+          Requires=matrix-synapse.service
+          After=matrix-synapse.service
+          ConditionPathExists=!/var/home/u_matrix/%N.stamp
+
+          [Service]
+          Type=oneshot
+          # register_new_matrix_user reads the shared secret from the
+          # configuration, and the secret file only exists once Synapse has
+          # started once. 127.0.0.1 rather than localhost on the host side:
+          # pasta resets a forwarded ::1 connection instead of refusing it.
+          ExecStart=/bin/sh -c " \
+            while ! curl -sf http://127.0.0.1:{{ matrix.http_port }}/health > /dev/null; do \
+              echo \"Waiting for Synapse...\"; \
+              sleep 1; \
+            done; \
+            podman exec matrix-synapse register_new_matrix_user --exists-ok --admin \
+              -c /config/homeserver.yaml \
+              -u '{{ matrix.admin_username }}' -p '{{ matrix.admin_password }}' \
+              http://localhost:8008"
+          ExecStart=/usr/bin/touch /var/home/u_matrix/%N.stamp
+          Restart=no

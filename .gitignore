@@ -3,4 +3,5 @@ Makefile
 config.bu
 config.ign
 
+.cache/
 site/

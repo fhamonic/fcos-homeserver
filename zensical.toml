@@ -16,6 +16,7 @@ nav = [
   { "Getting started" = [
     { "Installation" = "getting-started/index.md" },
     { "Maintenance" = "getting-started/maintenance.md" },
+    { "Debugging services" = "getting-started/debugging.md" },
   ] },
   { "Templates" = [
     { "Overview" = "templates/index.md" },
@@ -36,6 +37,9 @@ nav = [
     { "prometheus" = "templates/prometheus.md" },
   ] },
   { "Design rationale" = "design-rationale.md" },
+  { "Contributing" = [
+    { "Adding a template" = "contributing/adding-a-template.md" },
+  ] },
 ]
 
 [project.validation.links]

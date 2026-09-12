@@ -75,8 +75,10 @@ The main barrier to entry therefore remains the initial configuration, which is 
 
 - [**Installation**](getting-started/index.md) — edit `metaconfig.yaml`, build the Butane configuration and install Fedora CoreOS with it.
 - [**Maintenance**](getting-started/maintenance.md) — SSH access, the per-service users, reading logs and tweaking a running service.
+- [**Debugging services**](getting-started/debugging.md) — the commands for a service that does not come up: journal, Quadlet generator, health checks, volumes.
 - [**Templates**](templates/index.md) — every available service and the parameters it takes.
 - [**Design rationale**](design-rationale.md) — how the generated configuration maps to Fedora CoreOS, Ignition, systemd and Podman. Recommended reading before adapting the project to your own setup.
+- [**Adding a template**](contributing/adding-a-template.md) — writing a new service template, trying it on a running server with the ad hoc script, and documenting it.
 
 ## What is in the box
 

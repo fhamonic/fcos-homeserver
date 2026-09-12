@@ -51,6 +51,8 @@ journalctl --user
 !!! tip
     Use `journalctl` [filtering options](https://man7.org/linux/man-pages/man1/journalctl.1.html#FILTERING_OPTIONS) (`-u jellyfin.service`, `--since today`, `-f`...) or `grep` to locate relevant entries quickly.
 
+When a service does not come up, the [debugging page](debugging.md) lists the commands for the usual questions: the logs of a container Quadlet already removed, what the Quadlet generator made of the unit files, health checks, init units and volumes.
+
 ## Modifying service containers
 
 To update or tweak a service container:
@@ -84,3 +86,5 @@ python build_adhoc_script.py metaconfig.yaml
 ```
 
 The script asks which key to apply (it needs the `questionary` package) and prints the shell commands that create the user, directories, files and links of that template. Run them on the server, then start the service as its user with `systemctl --user daemon-reload && systemctl --user start <key>.service`.
+
+This is also the loop for developing a template: write it, apply it with the ad hoc script, debug it, fold the fix back into the template. [Adding a template](../contributing/adding-a-template.md) walks through every step, from the upstream compose file to the documentation page.

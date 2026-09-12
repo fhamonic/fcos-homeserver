@@ -52,7 +52,7 @@ docker run --interactive --rm quay.io/coreos/butane:release --pretty --strict < 
 sudo coreos-installer install /dev/xxx --ignition-url http://192.168.xxx.xxx:8000/config.ign --insecure-ignition && sudo reboot
 ```
 
-> For maintenance and debugging guidelines you can refer to the [Maintenance page](https://fhamonic.github.io/fcos-homeserver/getting-started/maintenance/) of the documentation
+> For maintenance and debugging guidelines you can refer to the [Maintenance](https://fhamonic.github.io/fcos-homeserver/getting-started/maintenance/) and [Debugging services](https://fhamonic.github.io/fcos-homeserver/getting-started/debugging/) pages of the documentation. To contribute a new service, see [Adding a template](https://fhamonic.github.io/fcos-homeserver/contributing/adding-a-template/).
 
 ## Design Rationale and Scope
 

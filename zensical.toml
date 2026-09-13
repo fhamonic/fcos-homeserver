@@ -26,6 +26,7 @@ nav = [
     { "convertx" = "templates/convertx.md" },
     { "ext4_drives" = "templates/ext4_drives.md" },
     { "forgejo" = "templates/forgejo.md" },
+    { "homeassistant" = "templates/homeassistant.md" },
     { "homepage" = "templates/homepage.md" },
     { "immich" = "templates/immich.md" },
     { "jellyfin" = "templates/jellyfin.md" },
@@ -37,6 +38,7 @@ nav = [
     { "overleaf" = "templates/overleaf.md" },
     { "prometheus" = "templates/prometheus.md" },
     { "stalwart" = "templates/stalwart.md" },
+    { "vaultwarden" = "templates/vaultwarden.md" },
     { "wg_easy" = "templates/wg_easy.md" },
   ] },
   { "Design rationale" = [

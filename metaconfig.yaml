@@ -38,6 +38,10 @@ caddy:
       port: 3015
     - hostname: convertx.mydomain.com
       port: 3018
+    - hostname: vault.mydomain.com
+      port: 3019
+    - hostname: ha.mydomain.com
+      port: 3020
     # Calls: the authorization service under /livekit/jwt, the SFU elsewhere
     - hostname: rtc.mydomain.com
       directives: |
@@ -64,6 +68,12 @@ caddy:
         @public not remote_ip 192.168.0.0/24
         respond @public 403
         reverse_proxy host.containers.internal:3008
+    # The Zigbee2MQTT frontend has no authentication: LAN only, like Prometheus.
+    - hostname: zigbee.mydomain.com
+      directives: |
+        @public not remote_ip 192.168.0.0/24
+        respond @public 403
+        reverse_proxy host.containers.internal:3021
     # Prometheus has no authentication: answer 403 to clients outside the LAN.
     - hostname: prometheus.mydomain.com
       directives: |
@@ -88,6 +98,15 @@ forgejo:
   image: codeberg.org/forgejo/forgejo:13
   http_port: 3005
   ssh_port: 2222
+
+homeassistant:
+  image: ghcr.io/home-assistant/home-assistant:2026.9
+  mosquitto_image: docker.io/library/eclipse-mosquitto:2
+  zigbee2mqtt_image: ghcr.io/koenkk/zigbee2mqtt:2
+  http_port: 3020
+  zigbee2mqtt_port: 3021
+  hostname: ha.mydomain.com
+  zigbee_dongle: CC2531
 
 homepage:
   image: ghcr.io/gethomepage/homepage:v1
@@ -271,6 +290,12 @@ stalwart:
   sender:
     username: noreply
     password: Sunny-Meadow-Cactus-42
+
+vaultwarden:
+  image: docker.io/vaultwarden/server:1.37.2
+  http_port: 3019
+  hostname: vault.mydomain.com
+  admin_password: L0NgP@SsW0rD
 
 wg_easy:
   image: ghcr.io/wg-easy/wg-easy:15

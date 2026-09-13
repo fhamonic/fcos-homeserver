@@ -1,0 +1,245 @@
+{#
+  Zigbee coordinators supported by the `zigbee_dongle` parameter. Every USB
+  coordinator is passed to Zigbee2MQTT the same way (a serial device); an
+  entry only tells which USB device to hand over and which Zigbee2MQTT
+  serial.adapter driver speaks to it. Add a model here to support it.
+#}
+{% set zigbee_dongles = {
+  "CC2531": {"usb_vendor": "0451", "usb_product": "16a8", "adapter": "zstack"},
+} %}
+{% if homeassistant.zigbee_dongle is defined %}
+{% set dongle = zigbee_dongles[homeassistant.zigbee_dongle] %}
+{% endif %}
+variant: fcos
+version: 1.6.0
+passwd:
+  groups:
+    - name: g_homeassistant
+      gid: {{ 1000 + id }}
+  users:
+    - name: u_homeassistant
+      uid: {{ 1000 + id }}
+      groups: [g_homeassistant]
+storage:
+  directories:
+    # ######################### rootless boilerplate ##########################
+    - path: /home/u_homeassistant/.config
+      mode: 0755
+      user: { name: u_homeassistant }
+      group: { name: g_homeassistant }
+    - path: /home/u_homeassistant/.config/containers
+      mode: 0755
+      user: { name: u_homeassistant }
+      group: { name: g_homeassistant }
+    - path: /home/u_homeassistant/.config/containers/systemd
+      mode: 0755
+      user: { name: u_homeassistant }
+      group: { name: g_homeassistant }
+    - path: /home/u_homeassistant/.config/systemd
+      mode: 0755
+      user: { name: u_homeassistant }
+      group: { name: g_homeassistant }
+    - path: /home/u_homeassistant/.config/systemd/user
+      mode: 0755
+      user: { name: u_homeassistant }
+      group: { name: g_homeassistant }
+    - path: /home/u_homeassistant/.config/systemd/user/default.target.wants
+      mode: 0755
+      user: { name: u_homeassistant }
+      group: { name: g_homeassistant }
+    # ######################## Home Assistant config ##########################
+    - path: /home/u_homeassistant/config
+      mode: 0755
+      user: { name: u_homeassistant }
+      group: { name: g_homeassistant }
+    - path: /home/u_homeassistant/config/themes
+      mode: 0755
+      user: { name: u_homeassistant }
+      group: { name: g_homeassistant }
+  links:
+    - path: /home/u_homeassistant/.config/systemd/user/default.target.wants/homeassistant.service
+      user: { name: u_homeassistant }
+      group: { name: g_homeassistant }
+      target: /home/u_homeassistant/.config/containers/systemd/homeassistant.pod
+      hard: false
+  files:
+    - path: /var/lib/systemd/linger/u_homeassistant
+      mode: 0644
+{% if homeassistant.zigbee_dongle is defined %}
+    # ############################ Zigbee dongle ##############################
+    - path: /etc/udev/rules.d/99-homeassistant-zigbee.rules
+      mode: 0644
+      contents:
+        inline: |
+          # {{ homeassistant.zigbee_dongle }} Zigbee coordinator: owned by the Home Assistant user,
+          # labelled so that its rootless container may open it, and reachable as
+          # /dev/zigbee whatever ttyACM/ttyUSB number the kernel gives it.
+          SUBSYSTEM=="tty", ATTRS{idVendor}=="{{ dongle.usb_vendor }}", ATTRS{idProduct}=="{{ dongle.usb_product }}", OWNER="u_homeassistant", SECLABEL{selinux}="system_u:object_r:container_file_t:s0", SYMLINK+="zigbee"
+{% endif %}
+    # ######################## Home Assistant config ##########################
+    # Same content as the file Home Assistant generates on an empty /config,
+    # plus the reverse proxy settings, which have no other way to be set.
+    - path: /home/u_homeassistant/config/configuration.yaml
+      mode: 0644
+      user: { name: u_homeassistant }
+      group: { name: g_homeassistant }
+      contents:
+        inline: |
+          # Loads default set of integrations. Do not remove.
+          default_config:
+
+          # Load frontend themes from the themes folder
+          frontend:
+            themes: !include_dir_merge_named themes
+
+          automation: !include automations.yaml
+          script: !include scripts.yaml
+          scene: !include scenes.yaml
+
+          homeassistant:
+            external_url: https://{{ homeassistant.hostname }}
+
+          # Requests come through the Caddy site. Rootless Podman hands them to
+          # the pod from the host's own address (or its gateway's, when Caddy
+          # reached the host on the loopback), hence the private ranges.
+          http:
+            use_x_forwarded_for: true
+            trusted_proxies:
+              - 127.0.0.0/8
+              - ::1/128
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.0.0/16
+              - fe80::/10
+              - fd00::/8
+    - path: /home/u_homeassistant/config/automations.yaml
+      mode: 0644
+      user: { name: u_homeassistant }
+      group: { name: g_homeassistant }
+      contents:
+        inline: |
+          []
+    - path: /home/u_homeassistant/config/scripts.yaml
+      mode: 0644
+      user: { name: u_homeassistant }
+      group: { name: g_homeassistant }
+    - path: /home/u_homeassistant/config/scenes.yaml
+      mode: 0644
+      user: { name: u_homeassistant }
+      group: { name: g_homeassistant }
+    # ################################## Pod ##################################
+    - path: /home/u_homeassistant/.config/containers/systemd/homeassistant.pod
+      mode: 0644
+      user: { name: u_homeassistant }
+      group: { name: g_homeassistant }
+      contents:
+        inline: |
+          [Unit]
+          Description=Home Assistant Pod
+
+          [Pod]
+          PodName=homeassistant
+          ServiceName=homeassistant
+          PublishPort={{ homeassistant.http_port }}:8123
+{%- if homeassistant.zigbee_dongle is defined %}
+          PublishPort={{ homeassistant.zigbee2mqtt_port }}:8080
+{%- endif %}
+{% if homeassistant.zigbee_dongle is defined %}
+    # ################################ Volumes ################################
+    - path: /home/u_homeassistant/.config/containers/systemd/zigbee2mqtt-data.volume
+      mode: 0644
+      user: { name: u_homeassistant }
+      group: { name: g_homeassistant }
+      contents:
+        inline: |
+          [Volume]
+          VolumeName=zigbee2mqtt-data
+{% endif %}
+    # ############################ Home Assistant #############################
+    - path: /home/u_homeassistant/.config/containers/systemd/homeassistant-server.container
+      mode: 0644
+      user: { name: u_homeassistant }
+      group: { name: g_homeassistant }
+      contents:
+        inline: |
+          [Unit]
+          Description=Home Assistant
+
+          [Container]
+          Pod=homeassistant.pod
+          ContainerName=homeassistant-server
+          Image={{ homeassistant.image }}
+          AutoUpdate=registry
+          # Home Assistant flushes its recorder database on stop.
+          StopTimeout=60
+
+          Volume=/home/u_homeassistant/config:/config:Z
+
+          [Service]
+          TimeoutStartSec=300
+          Restart=always
+          RestartSec=10
+{% if homeassistant.zigbee_dongle is defined %}
+    # ############################### Mosquitto ###############################
+    - path: /home/u_homeassistant/.config/containers/systemd/homeassistant-mosquitto.container
+      mode: 0644
+      user: { name: u_homeassistant }
+      group: { name: g_homeassistant }
+      contents:
+        inline: |
+          [Unit]
+          Description=Mosquitto MQTT Broker
+
+          [Container]
+          Pod=homeassistant.pod
+          ContainerName=homeassistant-mosquitto
+          Image={{ homeassistant.mosquitto_image }}
+          AutoUpdate=registry
+          # The image's stock configuration listens on 1883 without
+          # authentication, which only the pod can reach.
+
+          [Service]
+          TimeoutStartSec=300
+          Restart=always
+          RestartSec=10
+    # ############################## Zigbee2MQTT ##############################
+    - path: /home/u_homeassistant/.config/containers/systemd/homeassistant-zigbee2mqtt.container
+      mode: 0644
+      user: { name: u_homeassistant }
+      group: { name: g_homeassistant }
+      contents:
+        inline: |
+          [Unit]
+          Description=Zigbee2MQTT
+          Requires=homeassistant-mosquitto.container
+          After=homeassistant-mosquitto.container
+
+          [Container]
+          Pod=homeassistant.pod
+          ContainerName=homeassistant-zigbee2mqtt
+          Image={{ homeassistant.zigbee2mqtt_image }}
+          AutoUpdate=registry
+
+          # /dev/zigbee is the symlink of the udev rule. Without an explicit
+          # container path, Podman would name the device after the resolved
+          # ttyACM/ttyUSB node.
+          AddDevice=/dev/zigbee:/dev/zigbee
+
+          Volume=zigbee2mqtt-data.volume:/app/data
+
+          # Zigbee2MQTT writes data/configuration.yaml itself on first start
+          # (network keys included) instead of asking through its onboarding
+          # page; these variables override that file at every start.
+          Environment=Z2M_ONBOARD_NO_SERVER=1
+          Environment=ZIGBEE2MQTT_CONFIG_SERIAL_PORT=/dev/zigbee
+          Environment=ZIGBEE2MQTT_CONFIG_SERIAL_ADAPTER={{ dongle.adapter }}
+          Environment=ZIGBEE2MQTT_CONFIG_MQTT_SERVER=mqtt://localhost:1883
+          Environment=ZIGBEE2MQTT_CONFIG_HOMEASSISTANT_ENABLED=true
+          Environment=ZIGBEE2MQTT_CONFIG_FRONTEND_ENABLED=true
+
+          [Service]
+          TimeoutStartSec=300
+          Restart=always
+          RestartSec=10
+{% endif %}

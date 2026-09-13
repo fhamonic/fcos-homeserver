@@ -1,0 +1,87 @@
+variant: fcos
+version: 1.6.0
+passwd:
+  groups:
+    - name: g_vaultwarden
+      gid: {{ 1000 + id }}
+  users:
+    - name: u_vaultwarden
+      uid: {{ 1000 + id }}
+      groups: [g_vaultwarden]
+storage:
+  directories:
+    # ######################### rootless boilerplate ##########################
+    - path: /home/u_vaultwarden/.config
+      mode: 0755
+      user: { name: u_vaultwarden }
+      group: { name: g_vaultwarden }
+    - path: /home/u_vaultwarden/.config/containers
+      mode: 0755
+      user: { name: u_vaultwarden }
+      group: { name: g_vaultwarden }
+    - path: /home/u_vaultwarden/.config/containers/systemd
+      mode: 0755
+      user: { name: u_vaultwarden }
+      group: { name: g_vaultwarden }
+    - path: /home/u_vaultwarden/.config/systemd
+      mode: 0755
+      user: { name: u_vaultwarden }
+      group: { name: g_vaultwarden }
+    - path: /home/u_vaultwarden/.config/systemd/user
+      mode: 0755
+      user: { name: u_vaultwarden }
+      group: { name: g_vaultwarden }
+    - path: /home/u_vaultwarden/.config/systemd/user/default.target.wants
+      mode: 0755
+      user: { name: u_vaultwarden }
+      group: { name: g_vaultwarden }
+  links:
+    - path: /home/u_vaultwarden/.config/systemd/user/default.target.wants/vaultwarden.service
+      user: { name: u_vaultwarden }
+      group: { name: g_vaultwarden }
+      target: /home/u_vaultwarden/.config/containers/systemd/vaultwarden.container
+      hard: false
+  files:
+    - path: /var/lib/systemd/linger/u_vaultwarden
+      mode: 0644
+    # ################################ Volumes ################################
+    - path: /home/u_vaultwarden/.config/containers/systemd/data.volume
+      mode: 0644
+      user: { name: u_vaultwarden }
+      group: { name: g_vaultwarden }
+      contents:
+        inline: |
+          [Volume]
+          VolumeName=data
+    # ############################## Vaultwarden ##############################
+    - path: /home/u_vaultwarden/.config/containers/systemd/vaultwarden.container
+      mode: 0644
+      user: { name: u_vaultwarden }
+      group: { name: g_vaultwarden }
+      contents:
+        inline: |
+          [Unit]
+          Description=Vaultwarden
+
+          [Container]
+          ContainerName=vaultwarden
+          Image={{ vaultwarden.image }}
+          AutoUpdate=registry
+          UserNS=auto
+          PublishPort={{ vaultwarden.http_port }}:80
+          # Clients compare this URL with the one they were given; the
+          # notifications websocket is served on the same port
+          Environment=DOMAIN=https://{{ vaultwarden.hostname }}
+          # Nobody registers by themselves: accounts are invited from /admin,
+          # then the invitee creates their account with the invited address
+          Environment=SIGNUPS_ALLOWED=false
+          Environment=ADMIN_TOKEN={{ vaultwarden.admin_password }}
+          # Caddy sends X-Forwarded-For, not the X-Real-IP Vaultwarden expects
+          Environment=IP_HEADER=X-Forwarded-For
+
+          Volume=data.volume:/data
+
+          [Service]
+          TimeoutStartSec=300
+          Restart=always
+          RestartSec=10

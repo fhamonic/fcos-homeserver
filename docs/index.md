@@ -86,7 +86,7 @@ The main barrier to entry therefore remains the initial configuration, which is 
 | --- | --- |
 | **Administration** | [core](templates/core.md) (SSH keys), [ext4_drives](templates/ext4_drives.md) (automatic mounting of data drives) |
 | **Network** | [caddy](templates/caddy.md) (reverse proxy, automatic HTTPS), [adguardhome](templates/adguardhome.md) (DNS filter, DHCP), [wg_easy](templates/wg_easy.md) (WireGuard VPN) |
-| **Applications** | [jellyfin](templates/jellyfin.md), [immich](templates/immich.md), [forgejo](templates/forgejo.md), [overleaf](templates/overleaf.md), [joplin](templates/joplin.md), [livesync](templates/livesync.md), [openwebui](templates/openwebui.md), [matrix](templates/matrix.md) (chat server), [matrix_rtc](templates/matrix_rtc.md) (its voice and video calls), [convertx](templates/convertx.md) (file converter) |
+| **Applications** | [jellyfin](templates/jellyfin.md), [immich](templates/immich.md), [forgejo](templates/forgejo.md), [overleaf](templates/overleaf.md), [joplin](templates/joplin.md), [livesync](templates/livesync.md), [openwebui](templates/openwebui.md), [matrix](templates/matrix.md) (chat server), [matrix_rtc](templates/matrix_rtc.md) (its voice and video calls), [convertx](templates/convertx.md) (file converter), [vaultwarden](templates/vaultwarden.md) (password manager), [homeassistant](templates/homeassistant.md) (home automation, Zigbee) |
 | **Dashboard and plumbing** | [homepage](templates/homepage.md), [prometheus](templates/prometheus.md), [stalwart](templates/stalwart.md) (outgoing mail relay) |
 
 ## License

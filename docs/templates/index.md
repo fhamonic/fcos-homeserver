@@ -10,6 +10,7 @@ Each top-level key of `metaconfig.yaml` selects the template of the same name an
 | [convertx](convertx.md) | Service | ✓ | file converter (documents, images, audio, video, e-books) |
 | [ext4_drives](ext4_drives.md) | Storage | | automatic mounting of ext4 drives |
 | [forgejo](forgejo.md) | Service | ✓ | Gitea alternative |
+| [homeassistant](homeassistant.md) | Service | ✓ | home automation hub, with Zigbee devices through a USB dongle (Zigbee2MQTT) |
 | [homepage](homepage.md) | Service | ✓ | customizable dashboard listing the server's services and bookmarks |
 | [immich](immich.md) | Service | ✓ | self-hosted photo management (Google Photos-like) |
 | [jellyfin](jellyfin.md) | Service | ✓ | media server |
@@ -21,6 +22,7 @@ Each top-level key of `metaconfig.yaml` selects the template of the same name an
 | [overleaf](overleaf.md) | Service | ✓ | LaTeX collaborative editor |
 | [prometheus](prometheus.md) | Service | ✓ | metrics collection and time series database, backing the Homepage widgets |
 | [stalwart](stalwart.md) | Service | ✓ | outgoing mail relay for the other services (SMTP submission + DKIM) |
+| [vaultwarden](vaultwarden.md) | Service | ✓ | password manager server compatible with the Bitwarden clients |
 | [wg_easy](wg_easy.md) | Service | | WireGuard VPN server with a web interface |
 
 **Rootless** services run as a dedicated unprivileged user (`u_<template>`), with their Quadlet units under that user's home; the others need capabilities or host networking that only root can grant and are installed system-wide under `/etc/containers/systemd/`. See the [design rationale](../design-rationale/index.md) for what each kind puts on the system, and the [maintenance page](../getting-started/maintenance.md) for how to reach them.

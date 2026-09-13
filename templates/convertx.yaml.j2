@@ -1,0 +1,119 @@
+variant: fcos
+version: 1.6.0
+passwd:
+  groups:
+    - name: g_convertx
+      gid: {{ 1000 + id }}
+  users:
+    - name: u_convertx
+      uid: {{ 1000 + id }}
+      groups: [g_convertx]
+storage:
+  directories:
+    # ######################### rootless boilerplate ##########################
+    - path: /home/u_convertx/.config
+      mode: 0755
+      user: { name: u_convertx }
+      group: { name: g_convertx }
+    - path: /home/u_convertx/.config/containers
+      mode: 0755
+      user: { name: u_convertx }
+      group: { name: g_convertx }
+    - path: /home/u_convertx/.config/containers/systemd
+      mode: 0755
+      user: { name: u_convertx }
+      group: { name: g_convertx }
+    - path: /home/u_convertx/.config/systemd
+      mode: 0755
+      user: { name: u_convertx }
+      group: { name: g_convertx }
+    - path: /home/u_convertx/.config/systemd/user
+      mode: 0755
+      user: { name: u_convertx }
+      group: { name: g_convertx }
+    - path: /home/u_convertx/.config/systemd/user/default.target.wants
+      mode: 0755
+      user: { name: u_convertx }
+      group: { name: g_convertx }
+  links:
+    - path: /home/u_convertx/.config/systemd/user/default.target.wants/convertx.service
+      user: { name: u_convertx }
+      group: { name: g_convertx }
+      target: /home/u_convertx/.config/containers/systemd/convertx.container
+      hard: false
+  files:
+    - path: /var/lib/systemd/linger/u_convertx
+      mode: 0644
+    # ################################ Volumes ################################
+    - path: /home/u_convertx/.config/containers/systemd/data.volume
+      mode: 0644
+      user: { name: u_convertx }
+      group: { name: g_convertx }
+      contents:
+        inline: |
+          [Volume]
+          VolumeName=data
+    # ################################ ConvertX ###############################
+    - path: /home/u_convertx/.config/containers/systemd/convertx.container
+      mode: 0644
+      user: { name: u_convertx }
+      group: { name: g_convertx }
+      contents:
+        inline: |
+          [Unit]
+          Description=ConvertX
+          Wants=convertx-init-secret.service
+          After=convertx-init-secret.service
+
+          [Container]
+          ContainerName=convertx
+          Image={{ convertx.image }}
+          AutoUpdate=registry
+          UserNS=auto
+          PublishPort={{ convertx.http_port }}:3000
+          # JWT_SECRET, generated once by convertx-init-secret.service so that
+          # sessions survive restarts (the default is a new random value at
+          # each start)
+          EnvironmentFile=/var/home/u_convertx/convertx.env
+          # Only the first account can be created; the service is reached over
+          # HTTPS through Caddy, so plain HTTP logins stay refused
+          Environment=ACCOUNT_REGISTRATION=false
+          Environment=HTTP_ALLOWED=false
+          Environment=ALLOW_UNAUTHENTICATED=false
+          Environment=AUTO_DELETE_EVERY_N_HOURS=24
+
+          Volume=data.volume:/app/data
+
+          [Service]
+          TimeoutStartSec=300
+          Restart=always
+          RestartSec=10
+    # ############################## JWT secret ###############################
+    - path: /home/u_convertx/.config/systemd/user/convertx-init-secret.service
+      mode: 0644
+      user: { name: u_convertx }
+      group: { name: g_convertx }
+      contents:
+        inline: |
+          [Unit]
+          Description=Generate the ConvertX JWT secret
+          ConditionPathExists=!/var/home/u_convertx/convertx.env
+
+          [Service]
+          Type=oneshot
+          ExecStart=/var/home/u_convertx/convertx-init-secret.sh
+          Restart=no
+    - path: /home/u_convertx/convertx-init-secret.sh
+      mode: 0755
+      user: { name: u_convertx }
+      group: { name: g_convertx }
+      contents:
+        inline: |
+          #!/bin/bash
+          set -euo pipefail
+          umask 077
+          # No head after tr: under pipefail a reader that stops early fails
+          # the pipeline
+          secret=$(head -c 48 /dev/urandom | base64 | tr -d '/+=\n')
+          echo "JWT_SECRET=$secret" > /var/home/u_convertx/convertx.env
+          echo "ConvertX JWT secret generated"

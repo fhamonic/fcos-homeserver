@@ -36,6 +36,8 @@ caddy:
       port: 3014
     - hostname: chat.mydomain.com
       port: 3015
+    - hostname: convertx.mydomain.com
+      port: 3018
     # Calls: the authorization service under /livekit/jwt, the SFU elsewhere
     - hostname: rtc.mydomain.com
       directives: |
@@ -273,3 +275,7 @@ matrix_rtc:
     domain: mydomain.com
     hostname: matrix.mydomain.com
     port: 3014
+
+convertx:
+  image: ghcr.io/c4illin/convertx:v0.18.0
+  http_port: 3018

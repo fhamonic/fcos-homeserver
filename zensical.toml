@@ -37,6 +37,7 @@ nav = [
     { "prometheus" = "templates/prometheus.md" },
     { "matrix" = "templates/matrix.md" },
     { "matrix_rtc" = "templates/matrix_rtc.md" },
+    { "convertx" = "templates/convertx.md" },
   ] },
   { "Design rationale" = [
     { "Architecture" = "design-rationale/index.md" },

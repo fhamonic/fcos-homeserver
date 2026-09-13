@@ -1,11 +1,24 @@
 {#
   Zigbee coordinators supported by the `zigbee_dongle` parameter. Every USB
   coordinator is passed to Zigbee2MQTT the same way (a serial device); an
-  entry only tells which USB device to hand over and which Zigbee2MQTT
-  serial.adapter driver speaks to it. Add a model here to support it.
+  entry only tells which USB devices (vendor:product, as `lsusb` prints them)
+  to hand over and which Zigbee2MQTT serial.adapter driver speaks to it. Add
+  a model here to support it.
+
+  The CC2531 has USB on chip. The CC2652P sticks (Sonoff ZBDongle-P, Nous E16,
+  zzh!, slae.sh, SMLIGHT SLZB-02...) reach USB through a generic UART bridge,
+  a Silicon Labs CP210x or a WCH CH340, so those are the identifiers to match.
+
+  The Silicon Labs EFR32MG21 sticks are keyed by stick rather than by chip:
+  they share the `ember` driver but not the serial flow control, which the
+  optional `rtscts` field sets. That driver needs EmberZNet firmware 7.4+.
 #}
 {% set zigbee_dongles = {
-  "CC2531": {"usb_vendor": "0451", "usb_product": "16a8", "adapter": "zstack"},
+  "CC2531": {"usb_ids": ["0451:16a8"], "adapter": "zstack"},
+  "CC2652P": {"usb_ids": ["10c4:ea60", "1a86:7523"], "adapter": "zstack"},
+  "ZBDongle-E": {"usb_ids": ["1a86:55d4"], "adapter": "ember", "rtscts": false},
+  "SkyConnect": {"usb_ids": ["10c4:ea60"], "adapter": "ember", "rtscts": true},
+  "SLZB-07": {"usb_ids": ["10c4:ea60"], "adapter": "ember", "rtscts": true},
 } %}
 {% if homeassistant.zigbee_dongle is defined %}
 {% set dongle = zigbee_dongles[homeassistant.zigbee_dongle] %}
@@ -74,7 +87,9 @@ storage:
           # {{ homeassistant.zigbee_dongle }} Zigbee coordinator: owned by the Home Assistant user,
           # labelled so that its rootless container may open it, and reachable as
           # /dev/zigbee whatever ttyACM/ttyUSB number the kernel gives it.
-          SUBSYSTEM=="tty", ATTRS{idVendor}=="{{ dongle.usb_vendor }}", ATTRS{idProduct}=="{{ dongle.usb_product }}", OWNER="u_homeassistant", SECLABEL{selinux}="system_u:object_r:container_file_t:s0", SYMLINK+="zigbee"
+{%- for usb_id in dongle.usb_ids %}
+          SUBSYSTEM=="tty", ATTRS{idVendor}=="{{ usb_id.split(":")[0] }}", ATTRS{idProduct}=="{{ usb_id.split(":")[1] }}", OWNER="u_homeassistant", SECLABEL{selinux}="system_u:object_r:container_file_t:s0", SYMLINK+="zigbee"
+{%- endfor %}
 {% endif %}
     # ######################## Home Assistant config ##########################
     # Same content as the file Home Assistant generates on an empty /config,
@@ -234,6 +249,9 @@ storage:
           Environment=Z2M_ONBOARD_NO_SERVER=1
           Environment=ZIGBEE2MQTT_CONFIG_SERIAL_PORT=/dev/zigbee
           Environment=ZIGBEE2MQTT_CONFIG_SERIAL_ADAPTER={{ dongle.adapter }}
+{%- if dongle.rtscts is defined %}
+          Environment=ZIGBEE2MQTT_CONFIG_SERIAL_RTSCTS={{ dongle.rtscts | lower }}
+{%- endif %}
           Environment=ZIGBEE2MQTT_CONFIG_MQTT_SERVER=mqtt://localhost:1883
           Environment=ZIGBEE2MQTT_CONFIG_HOMEASSISTANT_ENABLED=true
           Environment=ZIGBEE2MQTT_CONFIG_FRONTEND_ENABLED=true

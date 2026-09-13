@@ -67,14 +67,24 @@ Public host name of the service, given as `https://<hostname>` to Home Assistant
 
 Model of the USB Zigbee coordinator plugged into the server. Leaving it out deploys Home Assistant alone, without Mosquitto and Zigbee2MQTT.
 
-Every USB coordinator Zigbee2MQTT supports is wired the same way (a serial device passed to the container); the model only tells which USB device to pick and which Zigbee2MQTT serial driver speaks to it. Supported values:
+Every USB coordinator Zigbee2MQTT supports is wired the same way (a serial device passed to the container); the model only tells which USB devices to pick and which Zigbee2MQTT serial driver speaks to them. Supported values:
 
-| Value | USB identifiers | Zigbee2MQTT adapter |
-|-------|-----------------|---------------------|
-| `CC2531` | `0451:16a8` | `zstack` |
+| Value | Stick | Radio | USB identifiers | Zigbee2MQTT adapter |
+|-------|-------|-------|-----------------|---------------------|
+| `CC2531` | the TI CC2531 dongle, USB on chip | CC2531 | `0451:16a8` | `zstack` |
+| `CC2652P` | Sonoff ZBDongle-P, Nous E16, zzh!, slae.sh, SMLIGHT SLZB-02 and the other CC2652P/CC2652R sticks, which reach USB through a Silicon Labs CP210x or a WCH CH340 UART bridge | CC2652P/R | `10c4:ea60`, `1a86:7523` | `zstack` |
+| `ZBDongle-E` | Sonoff Zigbee 3.0 USB Dongle Plus V2, CH9102F bridge, software flow control | EFR32MG21 | `1a86:55d4` | `ember` |
+| `SkyConnect` | Home Assistant SkyConnect and its successor the Connect ZBT-1, CP2102N bridge, hardware flow control | EFR32MG21 | `10c4:ea60` | `ember`, `rtscts: true` |
+| `SLZB-07` | SMLIGHT SLZB-07, CP2102N bridge, hardware flow control | EFR32MG21 | `10c4:ea60` | `ember`, `rtscts: true` |
 
-To support another model, add it to the table at the top of `templates/homeassistant.yaml.j2` with its `lsusb` identifiers and its [adapter driver](https://www.zigbee2mqtt.io/guide/configuration/adapter-settings.html).
+The Silicon Labs sticks are keyed by model rather than by radio because they share the driver but not the serial flow control. To support another model, add it to the table at the top of `templates/homeassistant.yaml.j2` with its `lsusb` identifiers, its [adapter driver](https://www.zigbee2mqtt.io/guide/configuration/adapter-settings.html) and, for `ember`, its flow control.
+
+!!! note
+    The `ember` driver requires EmberZNet firmware 7.4 or newer on the stick. Early ZBDongle-E batches ship an older firmware: flash the stick from a workstation with the vendor's web flasher before plugging it into the server. Multiprotocol firmware (Zigbee and Thread on one radio) is not supported by Zigbee2MQTT, and Home Assistant recommends one radio per protocol.
+
+!!! note
+    Except for the CC2531, the identifiers are those of generic USB-UART bridges, found on many other boards (ESP32 development kits, some Z-Wave sticks...), and shared between sticks: a ZBDongle-P, a SkyConnect and a SLZB-07 all report `10c4:ea60`, only `zigbee_dongle` tells them apart. Every such device plugged into the server is handed to `u_homeassistant`, and the last one enumerated becomes `/dev/zigbee`. Keep the server free of other CP210x, CH340 and CH9102 devices, or narrow the udev rule with the stick's `ATTRS{product}` string (`udevadm info -a /dev/ttyUSB0` shows it).
 
 * **Optional**
-* **Type:** Enumerated string
+* **Type:** `CC2531`, `CC2652P`, `ZBDongle-E`, `SkyConnect` or `SLZB-07`
 * **Example:** `CC2531`

@@ -6,22 +6,22 @@ Each top-level key of `metaconfig.yaml` selects the template of the same name an
 |----------|:----:|:--------:|-------------|
 | [core](core.md) | &ndash; | | mandatory administration login |
 | [adguardhome](adguardhome.md) | Service | | DNS filter + DHCP |
-| [ext4_drives](ext4_drives.md) | Storage | | automatic mounting of ext4 drives |
 | [caddy](caddy.md) | Service | ✓ | reverse proxy + automatic HTTPS |
-| [jellyfin](jellyfin.md) | Service | ✓ | media server |
-| [overleaf](overleaf.md) | Service | ✓ | LaTeX collaborative editor |
+| [convertx](convertx.md) | Service | ✓ | file converter (documents, images, audio, video, e-books) |
+| [ext4_drives](ext4_drives.md) | Storage | | automatic mounting of ext4 drives |
 | [forgejo](forgejo.md) | Service | ✓ | Gitea alternative |
-| [immich](immich.md) | Service | ✓ | self-hosted photo management (Google Photos-like) |
-| [joplin](joplin.md) | Service | ✓ | note-taking backend (Google Keep-like) |
-| [wg_easy](wg_easy.md) | Service | | WireGuard VPN server with a web interface |
-| [openwebui](openwebui.md) | Service | ✓ | web interface for LLM chat (Ollama, OpenAI-compatible APIs) |
-| [livesync](livesync.md) | Service | ✓ | Obsidian vault synchronization backend (CouchDB) |
 | [homepage](homepage.md) | Service | ✓ | customizable dashboard listing the server's services and bookmarks |
-| [stalwart](stalwart.md) | Service | ✓ | outgoing mail relay for the other services (SMTP submission + DKIM) |
-| [prometheus](prometheus.md) | Service | ✓ | metrics collection and time series database, backing the Homepage widgets |
+| [immich](immich.md) | Service | ✓ | self-hosted photo management (Google Photos-like) |
+| [jellyfin](jellyfin.md) | Service | ✓ | media server |
+| [joplin](joplin.md) | Service | ✓ | note-taking backend (Google Keep-like) |
+| [livesync](livesync.md) | Service | ✓ | Obsidian vault synchronization backend (CouchDB) |
 | [matrix](matrix.md) | Service | ✓ | private chat server (Discord-like) with the Element web client, not federated |
 | [matrix_rtc](matrix_rtc.md) | Service | ✓ | voice and video calls for the Matrix server (LiveKit SFU + Element Call backend) |
-| [convertx](convertx.md) | Service | ✓ | file converter (documents, images, audio, video, e-books) |
+| [openwebui](openwebui.md) | Service | ✓ | web interface for LLM chat (Ollama, OpenAI-compatible APIs) |
+| [overleaf](overleaf.md) | Service | ✓ | LaTeX collaborative editor |
+| [prometheus](prometheus.md) | Service | ✓ | metrics collection and time series database, backing the Homepage widgets |
+| [stalwart](stalwart.md) | Service | ✓ | outgoing mail relay for the other services (SMTP submission + DKIM) |
+| [wg_easy](wg_easy.md) | Service | | WireGuard VPN server with a web interface |
 
 **Rootless** services run as a dedicated unprivileged user (`u_<template>`), with their Quadlet units under that user's home; the others need capabilities or host networking that only root can grant and are installed system-wide under `/etc/containers/systemd/`. See the [design rationale](../design-rationale/index.md) for what each kind puts on the system, and the [maintenance page](../getting-started/maintenance.md) for how to reach them.
 

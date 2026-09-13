@@ -113,8 +113,20 @@ Expose only what a user must decide: images, `http_port`, credentials,
 public host name (`hostname`), host paths, named as `docs/design-rationale/terminology.md`
 says (`image`, `<component>_image`, `<protocol>_port`, `admin_*`, `*_dir`). Hard-code internal passwords between
 containers of the same pod (existing templates do). Add an example block to
-`metaconfig.yaml` (next free port in the 30xx range) and a matching
-`caddy.sites` entry. Never edit `secret.yaml`.
+`metaconfig.yaml` and a matching `caddy.sites` entry. Never edit `secret.yaml`.
+
+The top-level blocks of `metaconfig.yaml` are sorted lexicographically by
+key, with `core` always first: insert the new block at its sorted position,
+not at the end. Ports are not in file order, so take the next free one in
+the 30xx range (`grep -n "_port:" metaconfig.yaml`). Insert the
+`caddy.sites` entry next to the other plain `hostname`/`port` sites, which
+come before the ones with `directives`.
+
+`build_config.py` derives each service's uid from the position of its block
+(`uid = 1000 + index`), so reordering blocks renumbers the users. That is
+harmless in the example file, but tell the user that in a deployed
+`secret.yaml` the new block must go at the end, or every service after it
+changes uid.
 
 ## 6. Validate before reporting done
 
@@ -267,14 +279,17 @@ One sentence on what it is and where it is used.
    the maintenance page as `../getting-started/maintenance.md`. Multi-line
    examples go in a fenced block indented under the `* **Example:**` bullet.
 
-2. A nav entry `{ "<key>" = "templates/<key>.md" }` appended to the
-   `Templates` list of `nav` in `zensical.toml`.
+2. A nav entry `{ "<key>" = "templates/<key>.md" }` in the `Templates`
+   list of `nav` in `zensical.toml`. The list is `Overview`, then `core`,
+   then every other template sorted lexicographically by key: insert the
+   entry at its sorted position.
 
-3. A summary-table row appended to `docs/templates/index.md`:
+3. A summary-table row in `docs/templates/index.md`:
    `| [<key>](<key>.md) | Service | ✓ | one-line description |`
    The Rootless column is `✓` unless the template writes to
-   `/etc/containers/systemd/`, in which case leave it empty. Keep the table
-   and the nav in the same order.
+   `/etc/containers/systemd/`, in which case leave it empty. The rows follow
+   the same order as the nav (`core` first, then sorted by key): insert the
+   row at its sorted position.
 
 4. A link in the matching row of the "What is in the box" table of
    `docs/index.md` (Administration / Network / Applications / Dashboard and

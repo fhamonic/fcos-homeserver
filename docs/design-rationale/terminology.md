@@ -11,7 +11,7 @@ Names are `snake_case`. A parameter says what the value *is* (`hostname`, `photo
 
 ## Ports
 
-- **`http_port`** is the port on which the HTTP interface of the service is published on the host. It is unique across the file: Caddy, Homepage and Prometheus reach the service as `host.containers.internal:<http_port>`, and nothing is reachable from the internet without a Caddy site pointing at it. The examples use the `30xx` range, one port per template in file order.
+- **`http_port`** is the port on which the HTTP interface of the service is published on the host. It is unique across the file: Caddy, Homepage and Prometheus reach the service as `host.containers.internal:<http_port>`, and nothing is reachable from the internet without a Caddy site pointing at it. The examples use the `30xx` range, one port per template, a new template taking the next free one.
 - **`<protocol>_port`** is any other published port, named after its protocol: `https_port`, `ssh_port`, `smtp_port`, `wireguard_port`.
 - **`<component>_port`** is the HTTP port of a companion container that has a web interface of its own, published next to the service's `http_port` and given its own Caddy site: `matrix.element_port`. Its host name is **`<component>_hostname`**.
 - **`port`**, inside an entry that points at another service of the file (`caddy.sites[]`, `homepage.services.*`), is the `http_port` of that service.

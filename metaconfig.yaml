@@ -201,7 +201,7 @@ immich:
   photos_dir: /var/hdd/Photos
 
 jellyfin:
-  image: docker.io/jellyfin/jellyfin:10
+  image: docker.io/jellyfin/jellyfin:12
   http_port: 3002
   media_volumes:
     - /var/hdd/Movies:/media/Movies:ro,Z

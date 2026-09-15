@@ -162,9 +162,10 @@ Rootless containers get their network from pasta, which forwards published ports
 
 ## Automatic updates
 
-`podman auto-update` follows the tag of every container with `AutoUpdate=registry` and rolls back a container whose new image fails to start. To see what would change, or why a rollback happened:
+`podman auto-update` follows the tag of every container with `AutoUpdate=registry` and rolls back a container whose new image fails to start; the [automatic updates](automatic-updates.md) page explains the schedule and how to tune it. To see when the timer runs, what would change, or why a rollback happened:
 
 ```bash
+systemctl --user list-timers
 podman auto-update --dry-run
 journalctl --user -u podman-auto-update.service
 ```

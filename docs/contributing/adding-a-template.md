@@ -14,7 +14,7 @@ Two things are worth checking early. Setup steps that upstream runs with a scrip
 
 Copy `templates/openwebui.yaml.j2` or `templates/joplin.yaml.j2` and rename the key everywhere. The template receives two variables: the block of `metaconfig.yaml` under its key, and `id`, the position of that key in the file, which gives the user and group their ids (`1000 + id`).
 
-Keep the structure of the file you copied: the `passwd` block, the directories under `/home/u_<key>/.config` (including `.config/systemd` itself, which must be created by the template so it does not end up owned by root), the `default.target.wants` symlink to the `.pod` or `.container`, the linger file, then configuration files, volumes, containers, init units and helper scripts. Everything is owned by `u_<key>:g_<key>`, mode `0644` except scripts and directories (`0755`).
+Keep the structure of the file you copied: the `passwd` block, the directories under `/home/u_<key>/.config` (including `.config/systemd` itself, which must be created by the template so it does not end up owned by root), the `default.target.wants` symlink to the `.pod` or `.container`, the `timers.target.wants` symlink to Podman's update timer, the linger file, the optional `auto_update` drop-in, then configuration files, volumes, containers, init units and helper scripts. Everything is owned by `u_<key>:g_<key>`, mode `0644` except scripts and directories (`0755`).
 
 The compose file maps almost line by line:
 
@@ -33,7 +33,7 @@ The compose file maps almost line by line:
 
 Containers that talk to each other go in a pod and reach each other on `localhost`; other services on the host are reached as `host.containers.internal:<port>`. Steps to run once become a `Type=oneshot` unit that waits for the application, does its job and touches a stamp file, guarded by `ConditionPathExists=!<stamp>` (see the overleaf template for the shape).
 
-Expose as parameters only what a user must decide: images, `http_port`, credentials, the public `hostname`, host paths, named as the [terminology](../design-rationale/terminology.md) page says. Credentials between the containers of one pod stay hard-coded. Rendering is strict, so every `{{ key.x }}` must exist in the block; guard optional ones with `{% if key.x is defined %}`.
+Expose as parameters only what a user must decide: images, `http_port`, credentials, the public `hostname`, host paths, named as the [terminology](../design-rationale/terminology.md) page says. The `auto_update` block copied from the source template stays as it is, and is documented once on the [automatic updates](../getting-started/automatic-updates.md) page rather than on the template's page. Credentials between the containers of one pod stay hard-coded. Rendering is strict, so every `{{ key.x }}` must exist in the block; guard optional ones with `{% if key.x is defined %}`.
 
 !!! note "Escaping"
     `%` in a unit value is a systemd specifier: `%N` is intended, a `%` in a password must be `%%`. `$VAR` in `ExecStart` is expanded by systemd from the unit's environment, not the container's. Upstream Go templates use `{{ ... }}` too; wrap them in `{% raw %} ... {% endraw %}`.

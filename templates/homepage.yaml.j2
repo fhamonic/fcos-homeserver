@@ -35,6 +35,14 @@ storage:
       mode: 0755
       user: { name: u_homepage }
       group: { name: g_homepage }
+    - path: /home/u_homepage/.config/systemd/user/timers.target.wants
+      mode: 0755
+      user: { name: u_homepage }
+      group: { name: g_homepage }
+    - path: /home/u_homepage/.config/systemd/user/podman-auto-update.timer.d
+      mode: 0755
+      user: { name: u_homepage }
+      group: { name: g_homepage }
     # ############################# Configuration #############################
     # Homepage populates this directory with its default YAML files on first
     # start; edit them as u_homepage, changes are picked up live.
@@ -43,6 +51,11 @@ storage:
       user: { name: u_homepage }
       group: { name: g_homepage }
   links:
+    - path: /home/u_homepage/.config/systemd/user/timers.target.wants/podman-auto-update.timer
+      user: { name: u_homepage }
+      group: { name: g_homepage }
+      target: /usr/lib/systemd/user/podman-auto-update.timer
+      hard: false
     - path: /home/u_homepage/.config/systemd/user/default.target.wants/homepage.service
       user: { name: u_homepage }
       group: { name: g_homepage }
@@ -51,6 +64,19 @@ storage:
   files:
     - path: /var/lib/systemd/linger/u_homepage
       mode: 0644
+{% if homepage.auto_update is defined %}
+    # The empty OnCalendar= drops the daily default of the timer, else
+    # both schedules fire
+    - path: /home/u_homepage/.config/systemd/user/podman-auto-update.timer.d/schedule.conf
+      mode: 0644
+      user: { name: u_homepage }
+      group: { name: g_homepage }
+      contents:
+        inline: |
+          [Timer]
+          OnCalendar=
+          OnCalendar={{ homepage.auto_update }}
+{% endif %}
 {%- if homepage.services is defined or homepage.custom_services is defined %}
 {#- Widget catalog for the services templated in this repository.
     https://gethomepage.dev/widgets/ -#}

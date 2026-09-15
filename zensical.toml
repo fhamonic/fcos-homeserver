@@ -16,6 +16,7 @@ nav = [
   { "Getting started" = [
     { "Installation" = "getting-started/index.md" },
     { "Maintenance" = "getting-started/maintenance.md" },
+    { "Automatic updates" = "getting-started/automatic-updates.md" },
     { "Debugging services" = "getting-started/debugging.md" },
   ] },
   { "Templates" = [

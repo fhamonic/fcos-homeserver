@@ -35,7 +35,20 @@ storage:
       mode: 0755
       user: { name: u_convertx }
       group: { name: g_convertx }
+    - path: /home/u_convertx/.config/systemd/user/timers.target.wants
+      mode: 0755
+      user: { name: u_convertx }
+      group: { name: g_convertx }
+    - path: /home/u_convertx/.config/systemd/user/podman-auto-update.timer.d
+      mode: 0755
+      user: { name: u_convertx }
+      group: { name: g_convertx }
   links:
+    - path: /home/u_convertx/.config/systemd/user/timers.target.wants/podman-auto-update.timer
+      user: { name: u_convertx }
+      group: { name: g_convertx }
+      target: /usr/lib/systemd/user/podman-auto-update.timer
+      hard: false
     - path: /home/u_convertx/.config/systemd/user/default.target.wants/convertx.service
       user: { name: u_convertx }
       group: { name: g_convertx }
@@ -44,6 +57,19 @@ storage:
   files:
     - path: /var/lib/systemd/linger/u_convertx
       mode: 0644
+{% if convertx.auto_update is defined %}
+    # The empty OnCalendar= drops the daily default of the timer, else
+    # both schedules fire
+    - path: /home/u_convertx/.config/systemd/user/podman-auto-update.timer.d/schedule.conf
+      mode: 0644
+      user: { name: u_convertx }
+      group: { name: g_convertx }
+      contents:
+        inline: |
+          [Timer]
+          OnCalendar=
+          OnCalendar={{ convertx.auto_update }}
+{% endif %}
     # ################################ Volumes ################################
     - path: /home/u_convertx/.config/containers/systemd/data.volume
       mode: 0644

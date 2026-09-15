@@ -39,7 +39,20 @@ storage:
       mode: 0755
       user: { name: u_caddy }
       group: { name: g_caddy }
+    - path: /home/u_caddy/.config/systemd/user/timers.target.wants
+      mode: 0755
+      user: { name: u_caddy }
+      group: { name: g_caddy }
+    - path: /home/u_caddy/.config/systemd/user/podman-auto-update.timer.d
+      mode: 0755
+      user: { name: u_caddy }
+      group: { name: g_caddy }
   links:
+    - path: /home/u_caddy/.config/systemd/user/timers.target.wants/podman-auto-update.timer
+      user: { name: u_caddy }
+      group: { name: g_caddy }
+      target: /usr/lib/systemd/user/podman-auto-update.timer
+      hard: false
     - path: /home/u_caddy/.config/systemd/user/sockets.target.wants/caddy.socket
       user: { name: u_caddy }
       group: { name: g_caddy }
@@ -53,6 +66,19 @@ storage:
   files:
     - path: /var/lib/systemd/linger/u_caddy
       mode: 0644
+{% if caddy.auto_update is defined %}
+    # The empty OnCalendar= drops the daily default of the timer, else
+    # both schedules fire
+    - path: /home/u_caddy/.config/systemd/user/podman-auto-update.timer.d/schedule.conf
+      mode: 0644
+      user: { name: u_caddy }
+      group: { name: g_caddy }
+      contents:
+        inline: |
+          [Timer]
+          OnCalendar=
+          OnCalendar={{ caddy.auto_update }}
+{% endif %}
     # -------------------------- Unprivileged ports ---------------------------
     - path: /etc/sysctl.d/99-unprivilegedports.conf
       mode: 0644

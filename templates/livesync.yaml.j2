@@ -35,7 +35,20 @@ storage:
       mode: 0755
       user: { name: u_livesync }
       group: { name: g_livesync }
+    - path: /home/u_livesync/.config/systemd/user/timers.target.wants
+      mode: 0755
+      user: { name: u_livesync }
+      group: { name: g_livesync }
+    - path: /home/u_livesync/.config/systemd/user/podman-auto-update.timer.d
+      mode: 0755
+      user: { name: u_livesync }
+      group: { name: g_livesync }
   links:
+    - path: /home/u_livesync/.config/systemd/user/timers.target.wants/podman-auto-update.timer
+      user: { name: u_livesync }
+      group: { name: g_livesync }
+      target: /usr/lib/systemd/user/podman-auto-update.timer
+      hard: false
     - path: /home/u_livesync/.config/systemd/user/default.target.wants/livesync.service
       user: { name: u_livesync }
       group: { name: g_livesync }
@@ -44,6 +57,19 @@ storage:
   files:
     - path: /var/lib/systemd/linger/u_livesync
       mode: 0644
+{% if livesync.auto_update is defined %}
+    # The empty OnCalendar= drops the daily default of the timer, else
+    # both schedules fire
+    - path: /home/u_livesync/.config/systemd/user/podman-auto-update.timer.d/schedule.conf
+      mode: 0644
+      user: { name: u_livesync }
+      group: { name: g_livesync }
+      contents:
+        inline: |
+          [Timer]
+          OnCalendar=
+          OnCalendar={{ livesync.auto_update }}
+{% endif %}
     # ############################# Configuration #############################
     # Equivalent of the settings applied by utils/couchdb/couchdb-init.sh in
     # https://github.com/vrtmrz/obsidian-livesync

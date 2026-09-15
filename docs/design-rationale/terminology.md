@@ -35,6 +35,10 @@ Names are `snake_case`. A parameter says what the value *is* (`hostname`, `photo
 - **`<content>_volumes`** is a list of bind mounts written in Podman's `host:container:options` syntax, for services whose libraries are several directories: `jellyfin.media_volumes`.
 - **`mount_point`** is where a drive is mounted, and **`placeholder_dirs`** the names of directories created under it.
 
+## Schedules
+
+- **`auto_update`** is the [systemd calendar expression](https://www.freedesktop.org/software/systemd/man/latest/systemd.time.html#Calendar%20Events) on which the service checks for a new image, replacing the daily default of Podman's timer. Every rootless template takes it; the [automatic updates](../getting-started/automatic-updates.md) page documents it once for all of them.
+
 ## Optional parameters
 
 An optional feature is enabled by giving its parameter and disabled by leaving it out, never by a boolean next to the value: the machine learning service of Immich exists when `immich.ml_image` is set, the host-side macvlan interface of AdGuard Home when `adguardhome.host_proxy_ip` is set. The template guards the corresponding units with `{% if key.x is defined %}`, and the documentation marks the parameter **Optional**.

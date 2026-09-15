@@ -35,6 +35,14 @@ storage:
       mode: 0755
       user: { name: u_prometheus }
       group: { name: g_prometheus }
+    - path: /home/u_prometheus/.config/systemd/user/timers.target.wants
+      mode: 0755
+      user: { name: u_prometheus }
+      group: { name: g_prometheus }
+    - path: /home/u_prometheus/.config/systemd/user/podman-auto-update.timer.d
+      mode: 0755
+      user: { name: u_prometheus }
+      group: { name: g_prometheus }
     # ############################# Configuration #############################
     # Mounted as /etc/prometheus; a directory rather than the single file so
     # that an editor replacing the file is still seen by the container.
@@ -43,6 +51,11 @@ storage:
       user: { name: u_prometheus }
       group: { name: g_prometheus }
   links:
+    - path: /home/u_prometheus/.config/systemd/user/timers.target.wants/podman-auto-update.timer
+      user: { name: u_prometheus }
+      group: { name: g_prometheus }
+      target: /usr/lib/systemd/user/podman-auto-update.timer
+      hard: false
     - path: /home/u_prometheus/.config/systemd/user/default.target.wants/prometheus.service
       user: { name: u_prometheus }
       group: { name: g_prometheus }
@@ -51,6 +64,19 @@ storage:
   files:
     - path: /var/lib/systemd/linger/u_prometheus
       mode: 0644
+{% if prometheus.auto_update is defined %}
+    # The empty OnCalendar= drops the daily default of the timer, else
+    # both schedules fire
+    - path: /home/u_prometheus/.config/systemd/user/podman-auto-update.timer.d/schedule.conf
+      mode: 0644
+      user: { name: u_prometheus }
+      group: { name: g_prometheus }
+      contents:
+        inline: |
+          [Timer]
+          OnCalendar=
+          OnCalendar={{ prometheus.auto_update }}
+{% endif %}
 {#- JSON is valid YAML; undo the HTML escapes Jinja's tojson adds. -#}
 {%- macro y(v) %}{{ v | tojson | replace('\\u003c', '<') | replace('\\u003e', '>') | replace('\\u0026', '&') | replace('\\u0027', "'") }}{% endmacro %}
 {#- Mapping keys stay bare when they are plain identifiers, quoted otherwise. -#}

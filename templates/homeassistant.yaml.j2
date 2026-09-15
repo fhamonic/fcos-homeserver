@@ -60,6 +60,14 @@ storage:
       mode: 0755
       user: { name: u_homeassistant }
       group: { name: g_homeassistant }
+    - path: /home/u_homeassistant/.config/systemd/user/timers.target.wants
+      mode: 0755
+      user: { name: u_homeassistant }
+      group: { name: g_homeassistant }
+    - path: /home/u_homeassistant/.config/systemd/user/podman-auto-update.timer.d
+      mode: 0755
+      user: { name: u_homeassistant }
+      group: { name: g_homeassistant }
     # ######################## Home Assistant config ##########################
     - path: /home/u_homeassistant/config
       mode: 0755
@@ -70,6 +78,11 @@ storage:
       user: { name: u_homeassistant }
       group: { name: g_homeassistant }
   links:
+    - path: /home/u_homeassistant/.config/systemd/user/timers.target.wants/podman-auto-update.timer
+      user: { name: u_homeassistant }
+      group: { name: g_homeassistant }
+      target: /usr/lib/systemd/user/podman-auto-update.timer
+      hard: false
     - path: /home/u_homeassistant/.config/systemd/user/default.target.wants/homeassistant.service
       user: { name: u_homeassistant }
       group: { name: g_homeassistant }
@@ -78,6 +91,19 @@ storage:
   files:
     - path: /var/lib/systemd/linger/u_homeassistant
       mode: 0644
+{% if homeassistant.auto_update is defined %}
+    # The empty OnCalendar= drops the daily default of the timer, else
+    # both schedules fire
+    - path: /home/u_homeassistant/.config/systemd/user/podman-auto-update.timer.d/schedule.conf
+      mode: 0644
+      user: { name: u_homeassistant }
+      group: { name: g_homeassistant }
+      contents:
+        inline: |
+          [Timer]
+          OnCalendar=
+          OnCalendar={{ homeassistant.auto_update }}
+{% endif %}
 {% if homeassistant.zigbee_dongle is defined %}
     # ############################ Zigbee dongle ##############################
     - path: /etc/udev/rules.d/99-homeassistant-zigbee.rules

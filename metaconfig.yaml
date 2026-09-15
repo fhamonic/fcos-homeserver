@@ -203,6 +203,9 @@ immich:
 jellyfin:
   image: docker.io/jellyfin/jellyfin:12
   http_port: 3002
+  # Optional: when to check for a new image (a systemd calendar expression),
+  # instead of daily; an update restarts the container
+  auto_update: Sun 04:00
   media_volumes:
     - /var/hdd/Movies:/media/Movies:ro,Z
     - /var/hdd/Shows:/media/Shows:ro,Z

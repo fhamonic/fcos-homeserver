@@ -70,11 +70,16 @@ everywhere. Keep the blocks in this order and with the same `# ####` banners:
 2. `storage.directories`: the rootless boilerplate, **including**
    `/home/u_<key>/.config/systemd` (Ignition creates missing parents as root,
    which breaks the user's `systemctl --user`).
-3. `storage.links`: `default.target.wants/<key>.service` pointing at the
-   `.pod` (pod) or `.container` (single). systemd logs a "has different name"
-   warning for this; it is expected.
-4. `storage.files`: linger file, then configuration files, then volumes,
-   then containers, then one-shot init units, then helper scripts.
+3. `storage.links`: `timers.target.wants/podman-auto-update.timer` pointing
+   at `/usr/lib/systemd/user/podman-auto-update.timer`, then
+   `default.target.wants/<key>.service` pointing at the `.pod` (pod) or
+   `.container` (single). systemd logs a "has different name" warning for
+   the latter; it is expected.
+4. `storage.files`: linger file, the `{% if <key>.auto_update is defined %}`
+   drop-in block (keep it verbatim, only the key changes: it is documented
+   once in `docs/getting-started/automatic-updates.md`, not per template),
+   then configuration files, then volumes, then containers, then one-shot
+   init units, then helper scripts.
 
 Every file owned by `u_<key>`/`g_<key>`, mode `0644` (scripts `0755`),
 directories `0755`. Rootful templates (need `NET_ADMIN`, macvlan, kernel

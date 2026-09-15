@@ -1,6 +1,6 @@
 # `core`
 
-Global system-level configuration. This key is mandatory.
+Global system-level configuration. This key is mandatory. Besides the administration login, it enables the system-wide `podman-auto-update.timer` that keeps the rootful services ([adguardhome](adguardhome.md), [wg_easy](wg_easy.md)) up to date (see [Automatic updates](../getting-started/automatic-updates.md)).
 
 ## `core.ssh_authorized_keys`
 

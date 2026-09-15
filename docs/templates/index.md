@@ -30,7 +30,7 @@ Each top-level key of `metaconfig.yaml` selects the template of the same name an
 ## Conventions
 
 - Every service that serves HTTP takes an `http_port` on which it is published on the host. Nothing is exposed to the internet by itself: publish it through a [Caddy](caddy.md) site pointing at that port.
-- Images are given in full (`registry/namespace/name:tag`) and follow their tag through Podman's automatic updates, so prefer a major or major.minor tag to `latest`.
+- Images are given in full (`registry/namespace/name:tag`) and follow their tag through Podman's [automatic updates](../getting-started/automatic-updates.md), so prefer a major or major.minor tag to `latest`. Every rootless template takes an optional `auto_update` schedule, documented on that page rather than repeated below.
 - Services that need to know their public address take a `hostname`, which should match their Caddy site.
 - Internal credentials between the containers of one service are hard-coded in the template and never reachable from outside the pod; only the credentials you must know are parameters.
 

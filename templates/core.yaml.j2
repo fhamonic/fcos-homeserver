@@ -7,3 +7,9 @@ passwd:
 {% for key in core.ssh_authorized_keys %}
         - {{ key }}
 {% endfor %}
+# Rootful services (adguardhome, wg_easy) share the system instance, so their
+# update timer is enabled once here: Butane rejects a unit listed twice
+systemd:
+  units:
+    - name: podman-auto-update.timer
+      enabled: true

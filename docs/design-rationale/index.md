@@ -27,7 +27,7 @@ Removing a key from `metaconfig.yaml` removes the whole service from the generat
 
 Every template that can run unprivileged does, as a distinct user:
 
-- The user's `.config/containers/systemd/` directory holds the Quadlet files, and `.config/systemd/user/default.target.wants/` the symlink that enables the generated service. Ignition also creates `.config/systemd` itself, because a parent directory created by Ignition would belong to root and break the user's `systemctl --user`.
+- The user's `.config/containers/systemd/` directory holds the Quadlet files, `.config/systemd/user/default.target.wants/` the symlink that enables the generated service, and `.config/systemd/user/timers.target.wants/` the one that enables Podman's update timer for that user. Ignition also creates `.config/systemd` itself, because a parent directory created by Ignition would belong to root and break the user's `systemctl --user`.
 - A file in `/var/lib/systemd/linger/` makes systemd start the user's session at boot, without any login.
 - Containers use user namespaces (`UserNS=keep-id` or `UserNS=auto`): root inside a container is an unprivileged uid on the host, and bind mounts get the `:Z` SELinux label so that the container may use them.
 
@@ -55,7 +55,7 @@ Restart=always
 RestartSec=10
 ```
 
-`AutoUpdate=registry` lets `podman auto-update` (and its `podman-auto-update.timer`, once enabled for the user) follow the image tag, which is why the examples pin a major or major.minor tag rather than `latest`. `TimeoutStartSec=300` leaves time for the first image pull, and the restart policy turns transient failures (a drive not mounted yet, a database still starting) into retries. Configuration that the application reads from a file is written by Ignition into the user's home and bind-mounted read-only (`:ro,Z`); configuration that the application takes from the environment is passed with `Environment=` lines.
+`AutoUpdate=registry` lets `podman-auto-update.timer`, which every template enables for its user, follow the image tag, which is why the examples pin a major or major.minor tag rather than `latest` (see [Automatic updates](../getting-started/automatic-updates.md)). `TimeoutStartSec=300` leaves time for the first image pull, and the restart policy turns transient failures (a drive not mounted yet, a database still starting) into retries. Configuration that the application reads from a file is written by Ignition into the user's home and bind-mounted read-only (`:ro,Z`); configuration that the application takes from the environment is passed with `Environment=` lines.
 
 ### Volume
 

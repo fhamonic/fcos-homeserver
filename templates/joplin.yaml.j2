@@ -31,7 +31,20 @@ storage:
       mode: 0755
       user: { name: u_joplin }
       group: { name: g_joplin }
+    - path: /home/u_joplin/.config/systemd/user/timers.target.wants
+      mode: 0755
+      user: { name: u_joplin }
+      group: { name: g_joplin }
+    - path: /home/u_joplin/.config/systemd/user/podman-auto-update.timer.d
+      mode: 0755
+      user: { name: u_joplin }
+      group: { name: g_joplin }
   links:
+    - path: /home/u_joplin/.config/systemd/user/timers.target.wants/podman-auto-update.timer
+      user: { name: u_joplin }
+      group: { name: g_joplin }
+      target: /usr/lib/systemd/user/podman-auto-update.timer
+      hard: false
     - path: /home/u_joplin/.config/systemd/user/default.target.wants/joplin.service
       user: { name: u_joplin }
       group: { name: g_joplin }
@@ -40,6 +53,19 @@ storage:
   files:
     - path: /var/lib/systemd/linger/u_joplin
       mode: 0644
+{% if joplin.auto_update is defined %}
+    # The empty OnCalendar= drops the daily default of the timer, else
+    # both schedules fire
+    - path: /home/u_joplin/.config/systemd/user/podman-auto-update.timer.d/schedule.conf
+      mode: 0644
+      user: { name: u_joplin }
+      group: { name: g_joplin }
+      contents:
+        inline: |
+          [Timer]
+          OnCalendar=
+          OnCalendar={{ joplin.auto_update }}
+{% endif %}
     # ################################## Pod ##################################
     - path: /home/u_joplin/.config/containers/systemd/joplin.pod
       mode: 0644

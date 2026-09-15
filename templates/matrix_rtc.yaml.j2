@@ -35,7 +35,20 @@ storage:
       mode: 0755
       user: { name: u_matrix_rtc }
       group: { name: g_matrix_rtc }
+    - path: /home/u_matrix_rtc/.config/systemd/user/timers.target.wants
+      mode: 0755
+      user: { name: u_matrix_rtc }
+      group: { name: g_matrix_rtc }
+    - path: /home/u_matrix_rtc/.config/systemd/user/podman-auto-update.timer.d
+      mode: 0755
+      user: { name: u_matrix_rtc }
+      group: { name: g_matrix_rtc }
   links:
+    - path: /home/u_matrix_rtc/.config/systemd/user/timers.target.wants/podman-auto-update.timer
+      user: { name: u_matrix_rtc }
+      group: { name: g_matrix_rtc }
+      target: /usr/lib/systemd/user/podman-auto-update.timer
+      hard: false
     - path: /home/u_matrix_rtc/.config/systemd/user/default.target.wants/matrix_rtc.service
       user: { name: u_matrix_rtc }
       group: { name: g_matrix_rtc }
@@ -44,6 +57,19 @@ storage:
   files:
     - path: /var/lib/systemd/linger/u_matrix_rtc
       mode: 0644
+{% if matrix_rtc.auto_update is defined %}
+    # The empty OnCalendar= drops the daily default of the timer, else
+    # both schedules fire
+    - path: /home/u_matrix_rtc/.config/systemd/user/podman-auto-update.timer.d/schedule.conf
+      mode: 0644
+      user: { name: u_matrix_rtc }
+      group: { name: g_matrix_rtc }
+      contents:
+        inline: |
+          [Timer]
+          OnCalendar=
+          OnCalendar={{ matrix_rtc.auto_update }}
+{% endif %}
     # ############################# Configuration #############################
     # https://github.com/livekit/livekit/blob/master/config-sample.yaml
     - path: /home/u_matrix_rtc/livekit.yaml

@@ -41,6 +41,7 @@ nav = [
     { "stalwart" = "templates/stalwart.md" },
     { "vaultwarden" = "templates/vaultwarden.md" },
     { "wg_easy" = "templates/wg_easy.md" },
+    { "yamtrack" = "templates/yamtrack.md" },
   ] },
   { "Design rationale" = [
     { "Architecture" = "design-rationale/index.md" },

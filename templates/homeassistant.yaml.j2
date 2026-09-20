@@ -77,6 +77,10 @@ storage:
       mode: 0755
       user: { name: u_homeassistant }
       group: { name: g_homeassistant }
+    - path: /home/u_homeassistant/config/.storage
+      mode: 0755
+      user: { name: u_homeassistant }
+      group: { name: g_homeassistant }
   links:
     - path: /home/u_homeassistant/.config/systemd/user/timers.target.wants/podman-auto-update.timer
       user: { name: u_homeassistant }
@@ -118,8 +122,7 @@ storage:
 {%- endfor %}
 {% endif %}
     # ######################## Home Assistant config ##########################
-    # Same content as the file Home Assistant generates on an empty /config,
-    # plus the reverse proxy settings, which have no other way to be set.
+    # Same content as the file Home Assistant generates on an empty /config.
     - path: /home/u_homeassistant/config/configuration.yaml
       mode: 0644
       user: { name: u_homeassistant }
@@ -139,21 +142,50 @@ storage:
 
           homeassistant:
             external_url: https://{{ homeassistant.hostname }}
-
-          # Requests come through the Caddy site. Rootless Podman hands them to
-          # the pod from the host's own address (or its gateway's, when Caddy
-          # reached the host on the loopback), hence the private ranges.
-          http:
-            use_x_forwarded_for: true
-            trusted_proxies:
-              - 127.0.0.0/8
-              - ::1/128
-              - 10.0.0.0/8
-              - 172.16.0.0/12
-              - 192.168.0.0/16
-              - 169.254.0.0/16
-              - fe80::/10
-              - fd00::/8
+    # The HTTP settings live in this store, managed from Settings > System >
+    # Network; an http: block in configuration.yaml is only migrated into a
+    # five-minute trial that reverts unless confirmed in the UI. This is the
+    # store as Home Assistant writes it once the settings are confirmed, at
+    # the previous minor version so that it fills the timestamp itself.
+    # Requests come through the Caddy site. Rootless Podman hands them to
+    # the pod from the host's own address (or its gateway's, when Caddy
+    # reached the host on the loopback), hence the private ranges.
+    - path: /home/u_homeassistant/config/.storage/http
+      mode: 0600
+      user: { name: u_homeassistant }
+      group: { name: g_homeassistant }
+      contents:
+        inline: |
+          {
+            "version": 2,
+            "minor_version": 1,
+            "key": "http",
+            "data": {
+              "stable": {
+                "server_port": 8123,
+                "use_x_forwarded_for": true,
+                "trusted_proxies": [
+                  "127.0.0.0/8",
+                  "::1/128",
+                  "10.0.0.0/8",
+                  "172.16.0.0/12",
+                  "192.168.0.0/16",
+                  "169.254.0.0/16",
+                  "fe80::/10",
+                  "fd00::/8"
+                ],
+                "cors_allowed_origins": [
+                  "https://cast.home-assistant.io"
+                ],
+                "login_attempts_threshold": -1,
+                "ip_ban_enabled": true,
+                "ssl_profile": "modern",
+                "use_x_frame_options": true
+              },
+              "pending": null,
+              "yaml_migration_done": true
+            }
+          }
     - path: /home/u_homeassistant/config/automations.yaml
       mode: 0644
       user: { name: u_homeassistant }

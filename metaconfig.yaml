@@ -42,6 +42,8 @@ caddy:
       port: 3019
     - hostname: ha.mydomain.com
       port: 3020
+    - hostname: yamtrack.mydomain.com
+      port: 3022
     # Calls: the authorization service under /livekit/jwt, the SFU elsewhere
     - hostname: rtc.mydomain.com
       directives: |
@@ -106,7 +108,7 @@ homeassistant:
   http_port: 3020
   zigbee2mqtt_port: 3021
   hostname: ha.mydomain.com
-  zigbee_dongle: CC2531
+  zigbee_dongle: CC2652P
 
 homepage:
   image: ghcr.io/gethomepage/homepage:v1
@@ -307,3 +309,16 @@ wg_easy:
   admin_username: admin
   admin_password: L0NgP@SsW0rD
   host: example.com
+
+yamtrack:
+  image: ghcr.io/fuzzygrim/yamtrack:0.26
+  redis_image: docker.io/library/redis:8-alpine
+  http_port: 3022
+  hostname: yamtrack.mydomain.com
+  # Signs the sessions: any long random string, kept across reprovisioning
+  secret_key: <LONG RANDOM STRING>
+  admin_username: admin
+  admin_password: L0NgP@SsW0rD
+  # Optional: the time zone of the calendar and of the tracking dates,
+  # instead of UTC
+  timezone: Europe/Paris

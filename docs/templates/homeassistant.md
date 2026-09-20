@@ -2,7 +2,7 @@
 
 Configuration for [Home Assistant](https://www.home-assistant.io/), the home automation hub, deployed as a pod that optionally bundles a Zigbee network: [Zigbee2MQTT](https://www.zigbee2mqtt.io/) drives a USB Zigbee coordinator (the "dongle") and publishes its devices to a [Mosquitto](https://mosquitto.org/) MQTT broker, from which Home Assistant picks them up. The Home Assistant interface is exposed on `http_port`, meant to be published through a [Caddy](caddy.md) site at `hostname`; the Zigbee2MQTT frontend on `zigbee2mqtt_port`.
 
-Home Assistant keeps its configuration in `/home/u_homeassistant/config`. The template seeds it with the same `configuration.yaml` Home Assistant would generate, plus the reverse proxy settings it needs to accept requests from Caddy; everything else (account, location, integrations, automations) is set up from the web interface, starting with the onboarding page at `https://<hostname>`.
+Home Assistant keeps its configuration in `/home/u_homeassistant/config`. The template seeds it with the same `configuration.yaml` Home Assistant would generate, plus its `external_url`, and with the HTTP settings store (`.storage/http`) holding the reverse proxy settings it needs to accept requests from Caddy, as Home Assistant itself writes it once those settings are confirmed under *Settings › System › Network*. Everything else (account, location, integrations, automations) is set up from the web interface, starting with the onboarding page at `https://<hostname>`.
 
 The Zigbee part is enabled by giving `zigbee_dongle`. The template then:
 
@@ -17,6 +17,9 @@ Once everything runs, add the **MQTT** integration in Home Assistant (*Settings 
 
 !!! note
     Home Assistant trusts the `X-Forwarded-For` header of requests coming from any private address, as rootless Podman delivers Caddy's requests from the host's own address (or its gateway's). A machine on the LAN can thus spoof the client address Home Assistant records, which matters only for its login attempt bans. The Zigbee2MQTT frontend has no authentication at all: give its Caddy site the LAN-only `directives` of the example rather than a plain `port`.
+
+!!! note
+    The HTTP settings are not seeded through an `http:` block of `configuration.yaml` on purpose: since 2026.7 Home Assistant migrates such a block into a five-minute trial that reverts to the previous settings unless confirmed in the web interface, then ignores the block and reports it as a repair issue. Without the settings, every request coming through Caddy is answered `400 Bad Request`. Change them from *Settings › System › Network*, not from a YAML block.
 
 !!! note
     Home Assistant discovers devices on the local network (Chromecast, HomeKit, Sonos, ESPHome...) by multicast, which does not cross the pod's network. Such devices can still be added by entering their address by hand. The Zigbee devices are not concerned, since they arrive through MQTT.

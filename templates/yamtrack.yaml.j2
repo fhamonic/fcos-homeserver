@@ -1,0 +1,200 @@
+variant: fcos
+version: 1.6.0
+passwd:
+  groups:
+    - name: g_yamtrack
+      gid: {{ 1000 + id }}
+  users:
+    - name: u_yamtrack
+      uid: {{ 1000 + id }}
+      groups: [g_yamtrack]
+storage:
+  directories:
+    # ######################### rootless boilerplate ##########################
+    - path: /home/u_yamtrack/.config
+      mode: 0755
+      user: { name: u_yamtrack }
+      group: { name: g_yamtrack }
+    - path: /home/u_yamtrack/.config/containers
+      mode: 0755
+      user: { name: u_yamtrack }
+      group: { name: g_yamtrack }
+    - path: /home/u_yamtrack/.config/containers/systemd
+      mode: 0755
+      user: { name: u_yamtrack }
+      group: { name: g_yamtrack }
+    - path: /home/u_yamtrack/.config/systemd/user
+      mode: 0755
+      user: { name: u_yamtrack }
+      group: { name: g_yamtrack }
+    - path: /home/u_yamtrack/.config/systemd/user/default.target.wants
+      mode: 0755
+      user: { name: u_yamtrack }
+      group: { name: g_yamtrack }
+    - path: /home/u_yamtrack/.config/systemd/user/timers.target.wants
+      mode: 0755
+      user: { name: u_yamtrack }
+      group: { name: g_yamtrack }
+    - path: /home/u_yamtrack/.config/systemd/user/podman-auto-update.timer.d
+      mode: 0755
+      user: { name: u_yamtrack }
+      group: { name: g_yamtrack }
+  links:
+    - path: /home/u_yamtrack/.config/systemd/user/timers.target.wants/podman-auto-update.timer
+      user: { name: u_yamtrack }
+      group: { name: g_yamtrack }
+      target: /usr/lib/systemd/user/podman-auto-update.timer
+      hard: false
+    - path: /home/u_yamtrack/.config/systemd/user/default.target.wants/yamtrack.service
+      user: { name: u_yamtrack }
+      group: { name: g_yamtrack }
+      target: /home/u_yamtrack/.config/containers/systemd/yamtrack.pod
+      hard: false
+  files:
+    - path: /var/lib/systemd/linger/u_yamtrack
+      mode: 0644
+{% if yamtrack.auto_update is defined %}
+    # The empty OnCalendar= drops the daily default of the timer, else
+    # both schedules fire
+    - path: /home/u_yamtrack/.config/systemd/user/podman-auto-update.timer.d/schedule.conf
+      mode: 0644
+      user: { name: u_yamtrack }
+      group: { name: g_yamtrack }
+      contents:
+        inline: |
+          [Timer]
+          OnCalendar=
+          OnCalendar={{ yamtrack.auto_update }}
+{% endif %}
+    # ################################## Pod ##################################
+    - path: /home/u_yamtrack/.config/containers/systemd/yamtrack.pod
+      mode: 0644
+      user: { name: u_yamtrack }
+      group: { name: g_yamtrack }
+      contents:
+        inline: |
+          [Unit]
+          Description=Yamtrack Pod
+
+          [Pod]
+          PodName=yamtrack
+          ServiceName=yamtrack
+          PublishPort={{ yamtrack.http_port }}:8000
+    # ################################ Volumes ################################
+    - path: /home/u_yamtrack/.config/containers/systemd/db.volume
+      mode: 0644
+      user: { name: u_yamtrack }
+      group: { name: g_yamtrack }
+      contents:
+        inline: |
+          [Volume]
+          VolumeName=db
+    - path: /home/u_yamtrack/.config/containers/systemd/redis-data.volume
+      mode: 0644
+      user: { name: u_yamtrack }
+      group: { name: g_yamtrack }
+      contents:
+        inline: |
+          [Volume]
+          VolumeName=redis-data
+    # ################################# Redis #################################
+    - path: /home/u_yamtrack/.config/containers/systemd/yamtrack-redis.container
+      mode: 0644
+      user: { name: u_yamtrack }
+      group: { name: g_yamtrack }
+      contents:
+        inline: |
+          [Unit]
+          Description=Yamtrack Redis
+
+          [Container]
+          Pod=yamtrack.pod
+          ContainerName=yamtrack-redis
+          Image={{ yamtrack.redis_image }}
+          AutoUpdate=registry
+
+          Volume=redis-data.volume:/data
+
+          HealthCmd=redis-cli ping || exit 1
+
+          [Service]
+          TimeoutStartSec=300
+    # ############################### Yamtrack ################################
+    - path: /home/u_yamtrack/.config/containers/systemd/yamtrack.container
+      mode: 0644
+      user: { name: u_yamtrack }
+      group: { name: g_yamtrack }
+      contents:
+        inline: |
+          [Unit]
+          Description=Yamtrack
+          Requires=yamtrack-redis.container
+          After=yamtrack-redis.container
+          Wants=yamtrack-init-admin.service
+
+          [Container]
+          Pod=yamtrack.pod
+          ContainerName=yamtrack
+          Image={{ yamtrack.image }}
+          AutoUpdate=registry
+          # The entrypoint runs the migrations, remaps the abc user to
+          # PUID/PGID and chowns the database directory before dropping to
+          # abc, so the container starts as root
+          UserNS=auto
+
+          # SQLite: enough for a personal install, and the upstream default
+          Volume=db.volume:/yamtrack/db
+
+          Environment=SECRET={{ yamtrack.secret_key }}
+          Environment=REDIS_URL=redis://localhost:6379
+          # Sets ALLOWED_HOSTS and the CSRF trusted origins behind Caddy
+          Environment=URLS=https://{{ yamtrack.hostname }}
+          # Nobody registers by themselves: the administrator account is
+          # created below, further accounts from /admin/
+          Environment=REGISTRATION=False
+          Environment=ADMIN_ENABLED=True
+{%- if yamtrack.timezone is defined %}
+          Environment=TZ={{ yamtrack.timezone }}
+{%- endif %}
+
+          HealthCmd=wget --no-verbose --tries=1 --spider http://127.0.0.1:8000/health/ || exit 1
+          HealthInterval=45s
+          HealthTimeout=15s
+          HealthRetries=5
+
+          [Service]
+          TimeoutStartSec=300
+          Restart=always
+          RestartSec=10
+    # ########################## Administrator account ########################
+    - path: /home/u_yamtrack/.config/systemd/user/yamtrack-init-admin.service
+      mode: 0644
+      user: { name: u_yamtrack }
+      group: { name: g_yamtrack }
+      contents:
+        inline: |
+          [Unit]
+          Description=Create the Yamtrack administrator account
+          Requires=yamtrack.service
+          After=yamtrack.service
+          ConditionPathExists=!/var/home/u_yamtrack/%N.stamp
+
+          [Service]
+          Type=oneshot
+          # As abc, the user gunicorn runs as: SQLite creates its -wal and -shm
+          # files next to the database, and gunicorn could not open them if a
+          # root exec created them first. 127.0.0.1 rather than localhost on
+          # the host side: pasta resets a forwarded ::1 connection instead of
+          # refusing it.
+          ExecStart=/bin/sh -c " \
+            while ! curl -sf http://127.0.0.1:{{ yamtrack.http_port }}/health/ > /dev/null; do \
+              echo \"Waiting for Yamtrack...\"; \
+              sleep 1; \
+            done; \
+            podman exec --user abc yamtrack python manage.py shell -c \"from django.contrib.auth import get_user_model; \
+              U = get_user_model(); \
+              U.objects.filter(username='{{ yamtrack.admin_username }}').exists() \
+                or U.objects.create_user(username='{{ yamtrack.admin_username }}', \
+                  password='{{ yamtrack.admin_password }}', is_staff=True, is_superuser=True)\""
+          ExecStart=/usr/bin/touch /var/home/u_yamtrack/%N.stamp
+          Restart=no

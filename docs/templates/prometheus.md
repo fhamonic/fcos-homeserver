@@ -5,7 +5,7 @@ Configuration for [Prometheus](https://prometheus.io/), a metrics collector and 
 Its purpose in this repository is to feed the [Homepage](homepage.md) dashboard: a `prometheus` entry in `homepage.services` shows the targets up and down, and an entry of `homepage.custom_services` with a `prometheusmetric` widget displays the result of any PromQL query, for any application exposing metrics (see there).
 
 !!! note
-    Prometheus has no authentication and its web interface lets anyone query the collected data. Homepage reaches it on `host.containers.internal:<http_port>` without any Caddy site, so either do not publish it at all or use a site with [`directives`](caddy.md#caddysitesdirectives) restricting it to the local network, as in the example `metaconfig.yaml` (`@public not remote_ip 192.168.0.0/24` followed by `respond @public 403`).
+    Prometheus has no authentication and its web interface lets anyone query the collected data. Homepage reaches it on `host.containers.internal:<http_port>` without any Caddy site, so either do not publish it at all or list its site in [`caddy.private_sites`](caddy.md#caddyprivate_sites), so that only the local network gets an answer, or in [`caddy.protected_sites`](caddy.md#caddyprotected_sites), as in the example `metaconfig.yaml`, so that clients outside the LAN log in first.
 
 ## `prometheus.image`
 

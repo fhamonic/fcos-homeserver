@@ -40,7 +40,7 @@ Expose as parameters only what a user must decide: images, `http_port`, credenti
 
 ## 3. Append the block to `metaconfig.yaml`
 
-Add an example block for the new key, with the next free port in the `30xx` range, and a matching [`caddy.sites`](../templates/caddy.md#caddysites) entry.
+Add an example block for the new key, with the next free port in the `30xx` range, and a matching [`caddy.public_sites`](../templates/caddy.md#caddypublic_sites) entry, or, for a web interface without authentication of its own, [`caddy.private_sites`](../templates/caddy.md#caddyprivate_sites) (LAN only) or [`caddy.protected_sites`](../templates/caddy.md#caddyprotected_sites) (behind a login outside the LAN).
 
 !!! warning "Append only"
     `id` is the position of the key in the file, and the user and group of the template get uid and gid `1000 + id`. Inserting a key in the middle shifts the id of every key after it: those templates get new uids on the next build, and the ad hoc script, run against a server provisioned with the old numbering, fails on `useradd` or creates users that no longer own their files. New keys go at the end.

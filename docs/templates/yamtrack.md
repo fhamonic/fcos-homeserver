@@ -5,16 +5,16 @@ Configuration for [Yamtrack](https://github.com/FuzzyGrim/Yamtrack), a media tra
 Nobody can register by themselves: the template creates the `admin_username` account at first start, and further accounts are created from the Django administration interface at `https://<hostname>/admin/` (*Users › Add*). The metadata comes from public APIs (TMDB, MyAnimeList, IGDB, Hardcover, ComicVine) with keys built into the image; the [environment variables page](https://fuzzygrim.github.io/Yamtrack/release/env-variables/) of Yamtrack lists how to give your own when the shared ones hit their rate limits.
 
 !!! note
-    The administration interface is reachable from anywhere the Caddy site is, protected by the administrator's password only. To keep it on the LAN, give the Caddy site `directives` instead of a plain `port`:
+    The administration interface is reachable from anywhere the Caddy site is, protected by the administrator's password only. To keep it on the LAN, give its [`caddy.public_sites`](caddy.md#caddypublic_sitesdirectives) entry `directives` instead of a plain `port`:
 
     ```yaml
     - hostname: yamtrack.mydomain.com
       directives: |
-        @admin_public {
+        @admin_outside {
             path /admin*
             not remote_ip 192.168.0.0/24
         }
-        respond @admin_public 403
+        respond @admin_outside 403
         reverse_proxy host.containers.internal:3022
     ```
 

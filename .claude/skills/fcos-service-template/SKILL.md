@@ -118,14 +118,16 @@ Expose only what a user must decide: images, `http_port`, credentials,
 public host name (`hostname`), host paths, named as `docs/design-rationale/terminology.md`
 says (`image`, `<component>_image`, `<protocol>_port`, `admin_*`, `*_dir`). Hard-code internal passwords between
 containers of the same pod (existing templates do). Add an example block to
-`metaconfig.yaml` and a matching `caddy.sites` entry. Never edit `secret.yaml`.
+`metaconfig.yaml` and a matching `caddy.public_sites` entry (`caddy.private_sites`
+or `caddy.protected_sites` for a web interface without authentication). Never
+edit `secret.yaml`.
 
 The top-level blocks of `metaconfig.yaml` are sorted lexicographically by
 key, with `core` always first: insert the new block at its sorted position,
 not at the end. Ports are not in file order, so take the next free one in
 the 30xx range (`grep -n "_port:" metaconfig.yaml`). Insert the
-`caddy.sites` entry next to the other plain `hostname`/`port` sites, which
-come before the ones with `directives`.
+`caddy.public_sites` entry next to the other plain `hostname`/`port` sites,
+which come before the ones with `directives`.
 
 `build_config.py` derives each service's uid from the position of its block
 (`uid = 1000 + index`), so reordering blocks renumbers the users. That is

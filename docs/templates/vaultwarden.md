@@ -7,16 +7,16 @@ Nobody can register by themselves: accounts are created by invitation from the a
 In each client, open the settings of the login page (*Logging in on: Self-hosted*) and enter `https://<hostname>` as *Server URL* before logging in.
 
 !!! note
-    The administration page is reachable from anywhere the Caddy site is, with the password as its only protection. To keep it on the LAN, give the Caddy site `directives` instead of a plain `port`:
+    The administration page is reachable from anywhere the Caddy site is, with the password as its only protection. To keep it on the LAN, give its [`caddy.public_sites`](caddy.md#caddypublic_sitesdirectives) entry `directives` instead of a plain `port`:
 
     ```yaml
     - hostname: vault.mydomain.com
       directives: |
-        @admin_public {
+        @admin_outside {
             path /admin*
             not remote_ip 192.168.0.0/24
         }
-        respond @admin_public 403
+        respond @admin_outside 403
         reverse_proxy host.containers.internal:3019
     ```
 

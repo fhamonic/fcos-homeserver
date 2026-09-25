@@ -6,6 +6,7 @@ Each top-level key of `metaconfig.yaml` selects the template of the same name an
 |----------|:----:|:--------:|-------------|
 | [core](core.md) | &ndash; | | mandatory administration login |
 | [adguardhome](adguardhome.md) | Service | | DNS filter + DHCP |
+| [authelia](authelia.md) | Service | ✓ | login portal for the protected sites of Caddy |
 | [caddy](caddy.md) | Service | ✓ | reverse proxy + automatic HTTPS |
 | [convertx](convertx.md) | Service | ✓ | file converter (documents, images, audio, video, e-books) |
 | [ext4_drives](ext4_drives.md) | Storage | | automatic mounting of ext4 drives |

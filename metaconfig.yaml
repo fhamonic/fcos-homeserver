@@ -11,11 +11,21 @@ adguardhome:
   ip: 192.168.0.10
   host_proxy_ip: 192.168.0.11
 
+authelia:
+  image: docker.io/authelia/authelia:4.39
+  http_port: 3023
+  hostname: auth.mydomain.com
+  domain: mydomain.com
+  users:
+    - username: admin
+      email: admin@mydomain.com
+      password_hash: <ARGON2 HASH OF THE PASSWORD>
+
 caddy:
   image: docker.io/library/caddy:2.10
   http_port: 80
   https_port: 443
-  sites:
+  public_sites:
     - hostname: jellyfin.mydomain.com
       port: 3002
     - hostname: overleaf.mydomain.com
@@ -44,6 +54,8 @@ caddy:
       port: 3020
     - hostname: yamtrack.mydomain.com
       port: 3022
+    - hostname: auth.mydomain.com
+      port: 3023
     # Calls: the authorization service under /livekit/jwt, the SFU elsewhere
     - hostname: rtc.mydomain.com
       directives: |
@@ -65,23 +77,24 @@ caddy:
         handle {
             redir https://home.mydomain.com{uri} permanent
         }
+  # Answered 403 outside lan_subnets:
+  lan_subnets:
+    - 192.168.0.0/24
+  private_sites:
     - hostname: wg.mydomain.com
+      port: 3008
+    # A service on another machine of the LAN.
+    - hostname: vllm.mydomain.com
       directives: |
-        @public not remote_ip 192.168.0.0/24
-        respond @public 403
-        reverse_proxy host.containers.internal:3008
-    # The Zigbee2MQTT frontend has no authentication: LAN only, like Prometheus.
+        reverse_proxy 192.168.0.27:8000
+  # Behind an Authelia login when accessed from outside lan_subnets:
+  authelia:
+    port: 3023
+  protected_sites:
     - hostname: zigbee.mydomain.com
-      directives: |
-        @public not remote_ip 192.168.0.0/24
-        respond @public 403
-        reverse_proxy host.containers.internal:3021
-    # Prometheus has no authentication: answer 403 to clients outside the LAN.
+      port: 3021
     - hostname: prometheus.mydomain.com
-      directives: |
-        @public not remote_ip 192.168.0.0/24
-        respond @public 403
-        reverse_proxy host.containers.internal:3013
+      port: 3013
 
 convertx:
   image: ghcr.io/c4illin/convertx:v0.18.0

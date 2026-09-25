@@ -23,6 +23,7 @@ nav = [
     { "Overview" = "templates/index.md" },
     { "core" = "templates/core.md" },
     { "adguardhome" = "templates/adguardhome.md" },
+    { "authelia" = "templates/authelia.md" },
     { "caddy" = "templates/caddy.md" },
     { "convertx" = "templates/convertx.md" },
     { "ext4_drives" = "templates/ext4_drives.md" },

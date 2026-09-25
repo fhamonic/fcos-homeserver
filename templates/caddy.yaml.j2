@@ -1,3 +1,14 @@
+{%- if caddy.sites is defined %}{{ caddy['sites is now public_sites, with the LAN-only sites in private_sites'] }}{% endif %}
+{#- The directives of a site block, unindented. -#}
+{%- macro site_body(site) -%}
+{%- if site.port is defined -%}
+reverse_proxy host.containers.internal:{{ site.port }}
+{%- elif site.redirect_to is defined -%}
+redir {{ site.redirect_to }} permanent
+{%- else -%}
+{{ site.directives | trim }}
+{%- endif -%}
+{%- endmacro %}
 variant: fcos
 version: 1.6.0
 passwd:
@@ -99,15 +110,42 @@ storage:
               protocols h3
             }
           }
-{% for site in caddy.sites %}
+{% for site in caddy.public_sites | default([]) %}
           {{ site.hostname }} {
-{%- if site.port is defined %}
-              reverse_proxy host.containers.internal:{{ site.port }}
-{%- elif site.redirect_to is defined %}
-              redir {{ site.redirect_to }} permanent
-{%- else %}
-{{ site.directives | trim | indent(14, first=True) }}
-{%- endif %}
+{{ site_body(site) | indent(14, first=True) }}
+          }
+{% endfor %}
+{#- The body stays inside handle: at the top level of a site, handle and redir
+    sort before respond, so a `respond @outside 403` next to them would let
+    outside clients through. -#}
+{% for site in caddy.private_sites | default([]) %}
+          {{ site.hostname }} {
+              @from_lan remote_ip {{ caddy.lan_subnets | join(' ') }}
+              handle @from_lan {
+{{ site_body(site) | indent(18, first=True) }}
+              }
+              handle {
+                  respond 403
+              }
+          }
+{% endfor %}
+{#- route keeps the written order, where at the top level of a site redir and
+    rewrite sort before forward_auth. The Remote-* headers go first:
+    copy_headers leaves a client's own ones in place whenever Authelia sends
+    none, and LAN clients never reach Authelia. -#}
+{% for site in caddy.protected_sites | default([]) %}
+          {{ site.hostname }} {
+              @from_outside not remote_ip {{ caddy.lan_subnets | join(' ') }}
+              route {
+                  request_header -Remote-*
+                  forward_auth @from_outside host.containers.internal:{{ caddy.authelia.port }} {
+                      uri /api/authz/forward-auth
+                      copy_headers Remote-User Remote-Groups Remote-Email Remote-Name
+                  }
+                  handle {
+{{ site_body(site) | indent(22, first=True) }}
+                  }
+              }
           }
 {% endfor %}
           # fd/3 is the port {{ caddy.http_port }} socket: nothing else listens on it

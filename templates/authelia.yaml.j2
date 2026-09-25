@@ -1,0 +1,204 @@
+variant: fcos
+version: 1.6.0
+passwd:
+  groups:
+    - name: g_authelia
+      gid: {{ 1000 + id }}
+  users:
+    - name: u_authelia
+      uid: {{ 1000 + id }}
+      groups: [g_authelia]
+storage:
+  directories:
+    # ######################### rootless boilerplate ##########################
+    - path: /home/u_authelia/.config
+      mode: 0755
+      user: { name: u_authelia }
+      group: { name: g_authelia }
+    - path: /home/u_authelia/.config/containers
+      mode: 0755
+      user: { name: u_authelia }
+      group: { name: g_authelia }
+    - path: /home/u_authelia/.config/containers/systemd
+      mode: 0755
+      user: { name: u_authelia }
+      group: { name: g_authelia }
+    - path: /home/u_authelia/.config/systemd
+      mode: 0755
+      user: { name: u_authelia }
+      group: { name: g_authelia }
+    - path: /home/u_authelia/.config/systemd/user
+      mode: 0755
+      user: { name: u_authelia }
+      group: { name: g_authelia }
+    - path: /home/u_authelia/.config/systemd/user/default.target.wants
+      mode: 0755
+      user: { name: u_authelia }
+      group: { name: g_authelia }
+    - path: /home/u_authelia/.config/systemd/user/timers.target.wants
+      mode: 0755
+      user: { name: u_authelia }
+      group: { name: g_authelia }
+    - path: /home/u_authelia/.config/systemd/user/podman-auto-update.timer.d
+      mode: 0755
+      user: { name: u_authelia }
+      group: { name: g_authelia }
+  links:
+    - path: /home/u_authelia/.config/systemd/user/timers.target.wants/podman-auto-update.timer
+      user: { name: u_authelia }
+      group: { name: g_authelia }
+      target: /usr/lib/systemd/user/podman-auto-update.timer
+      hard: false
+    - path: /home/u_authelia/.config/systemd/user/default.target.wants/authelia.service
+      user: { name: u_authelia }
+      group: { name: g_authelia }
+      target: /home/u_authelia/.config/containers/systemd/authelia.container
+      hard: false
+  files:
+    - path: /var/lib/systemd/linger/u_authelia
+      mode: 0644
+{% if authelia.auto_update is defined %}
+    # The empty OnCalendar= drops the daily default of the timer, else
+    # both schedules fire
+    - path: /home/u_authelia/.config/systemd/user/podman-auto-update.timer.d/schedule.conf
+      mode: 0644
+      user: { name: u_authelia }
+      group: { name: g_authelia }
+      contents:
+        inline: |
+          [Timer]
+          OnCalendar=
+          OnCalendar={{ authelia.auto_update }}
+{% endif %}
+    # ############################# Configuration #############################
+    # https://www.authelia.com/configuration/prologue/introduction/
+    - path: /home/u_authelia/configuration.yml
+      mode: 0644
+      user: { name: u_authelia }
+      group: { name: g_authelia }
+      contents:
+        inline: |
+          server:
+            address: 'tcp://:9091'
+            endpoints:
+              authz:
+                # Session cookie only: by default the endpoint also takes an
+                # Authorization: Basic header as Authelia credentials, which
+                # answers 401 to an application's own Basic credentials and
+                # forwards the Authelia password to the application
+                forward-auth:
+                  implementation: ForwardAuth
+                  authn_strategies:
+                    - name: CookieSession
+          theme: auto
+          authentication_backend:
+            # users.yml is generated and mounted read-only: a new password
+            # could not be saved
+            password_reset:
+              disable: true
+            password_change:
+              disable: true
+            file:
+              path: /config/users.yml
+          access_control:
+            default_policy: deny
+            rules:
+              - domain: ['{{ authelia.domain }}', '*.{{ authelia.domain }}']
+                policy: {{ authelia.policy | default('one_factor') }}
+          session:
+            cookies:
+              - domain: {{ authelia.domain }}
+                authelia_url: https://{{ authelia.hostname }}
+          storage:
+            local:
+              path: /data/db.sqlite3
+          notifier:
+            filesystem:
+              filename: /data/notification.txt
+    - path: /home/u_authelia/users.yml
+      mode: 0644
+      user: { name: u_authelia }
+      group: { name: g_authelia }
+      contents:
+        inline: |
+          users:
+{%- for user in authelia.users %}
+            {{ user.username }}:
+              displayname: {{ user.username }}
+              email: {{ user.email }}
+              password: '{{ user.password_hash }}'
+{%- endfor %}
+    # ################################ Volumes ################################
+    - path: /home/u_authelia/.config/containers/systemd/data.volume
+      mode: 0644
+      user: { name: u_authelia }
+      group: { name: g_authelia }
+      contents:
+        inline: |
+          [Volume]
+          VolumeName=data
+    # ################################ Authelia ###############################
+    - path: /home/u_authelia/.config/containers/systemd/authelia.container
+      mode: 0644
+      user: { name: u_authelia }
+      group: { name: g_authelia }
+      contents:
+        inline: |
+          [Unit]
+          Description=Authelia
+          Wants=authelia-init-secrets.service
+          After=authelia-init-secrets.service
+
+          [Container]
+          ContainerName=authelia
+          Image={{ authelia.image }}
+          AutoUpdate=registry
+          UserNS=auto
+          PublishPort={{ authelia.http_port }}:9091
+          # Session secret and storage encryption key, generated once by
+          # authelia-init-secrets.service: a new encryption key would leave
+          # the database unreadable
+          EnvironmentFile=/var/home/u_authelia/authelia.env
+          # Without a command, the entrypoint runs chown -R /config, which
+          # fails on the read-only files mounted there
+          Exec=authelia
+
+          Volume=/home/u_authelia/configuration.yml:/config/configuration.yml:ro,Z
+          Volume=/home/u_authelia/users.yml:/config/users.yml:ro,Z
+          Volume=data.volume:/data
+
+          [Service]
+          TimeoutStartSec=300
+          Restart=always
+          RestartSec=10
+    # ################################ Secrets ################################
+    - path: /home/u_authelia/.config/systemd/user/authelia-init-secrets.service
+      mode: 0644
+      user: { name: u_authelia }
+      group: { name: g_authelia }
+      contents:
+        inline: |
+          [Unit]
+          Description=Generate the Authelia secrets
+          ConditionPathExists=!/var/home/u_authelia/authelia.env
+
+          [Service]
+          Type=oneshot
+          ExecStart=/var/home/u_authelia/authelia-init-secrets.sh
+          Restart=no
+    - path: /home/u_authelia/authelia-init-secrets.sh
+      mode: 0755
+      user: { name: u_authelia }
+      group: { name: g_authelia }
+      contents:
+        inline: |
+          #!/bin/bash
+          set -euo pipefail
+          umask 077
+          # No head after tr: under pipefail a reader that stops early fails
+          # the pipeline
+          session=$(head -c 48 /dev/urandom | base64 | tr -d '/+=\n')
+          key=$(head -c 48 /dev/urandom | base64 | tr -d '/+=\n')
+          printf 'AUTHELIA_SESSION_SECRET=%s\nAUTHELIA_STORAGE_ENCRYPTION_KEY=%s\n' \
+            "$session" "$key" > /var/home/u_authelia/authelia.env
+          echo "Authelia secrets generated"

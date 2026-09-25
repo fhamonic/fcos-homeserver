@@ -14,18 +14,20 @@ Names are `snake_case`. A parameter says what the value *is* (`hostname`, `photo
 - **`http_port`** is the port on which the HTTP interface of the service is published on the host. It is unique across the file: Caddy, Homepage and Prometheus reach the service as `host.containers.internal:<http_port>`, and nothing is reachable from the internet without a Caddy site pointing at it. The examples use the `30xx` range, one port per template, a new template taking the next free one.
 - **`<protocol>_port`** is any other published port, named after its protocol: `https_port`, `ssh_port`, `smtp_port`, `wireguard_port`.
 - **`<component>_port`** is the HTTP port of a companion container that has a web interface of its own, published next to the service's `http_port` and given its own Caddy site: `matrix.element_port`. Its host name is **`<component>_hostname`**.
-- **`port`**, inside an entry that points at another service of the file (`caddy.sites[]`, `homepage.services.*`), is the `http_port` of that service.
+- **`port`**, inside an entry that points at another service of the file (the `caddy.*_sites[]` entries, `caddy.authelia`, `homepage.services.*`), is the `http_port` of that service.
 
 ## Addresses
 
 - **`hostname`** is the fully qualified domain name under which a service is reached from outside, that is the `hostname` of its Caddy site: `jellyfin.mydomain.com`. It carries no scheme and no port; where the application expects a URL, the template prepends `https://`.
 - **`host`** is a machine to connect to, given as a host name or an IP address: the endpoint of the VPN in `wg_easy.host`, the SMTP server of the provider in `stalwart.relay.host`.
 - **`ip`** and **`<role>_ip`** are IP addresses: `adguardhome.ip` for the container, `adguardhome.host_proxy_ip` for the proxy interface that puts the host on the same network.
+- **`subnet`** and **`<role>_subnets`** are address ranges in CIDR notation: `adguardhome.macvlan.subnet`, `caddy.lan_subnets`.
 - **`domain`** is a DNS domain rather than a host, such as the part of a mail address after the `@` in `stalwart.domain`.
 
 ## Credentials
 
 - **`admin_username`** and **`admin_password`** are the credentials of the first administrator account, created at first start. When the application identifies accounts by email, the username is **`admin_email`**; when it fixes the administrator's name (Stalwart's `admin`), only `admin_password` exists.
+- **`password_hash`** replaces `password` where the application stores only a hash, which the user generates: `authelia.users[].password_hash`.
 - Accounts for a specific purpose are a nested block named after their role, with **`username`** and **`password`** inside, plus **`host`** and **`port`** when the account is used on another machine: `stalwart.relay` (the provider's mailbox), `stalwart.sender` (the account the applications send with).
 - Credentials between the containers of one pod are not parameters at all: they are hard-coded in the template and never reachable from outside the pod.
 
@@ -45,4 +47,4 @@ An optional feature is enabled by giving its parameter and disabled by leaving i
 
 ## Pass-through blocks
 
-Where a template wraps a configuration format of the application itself, the keys are those of the application and are not renamed: the widget keys of `homepage.services.*` and `homepage.custom_services[]`, the `scrape_config` keys of `prometheus.jobs[]`, the `HOMEPAGE_*` variables of `homepage.environment`, the Caddyfile lines of `caddy.sites[].directives`. Their documentation links the upstream reference instead of repeating it.
+Where a template wraps a configuration format of the application itself, the keys are those of the application and are not renamed: the widget keys of `homepage.services.*` and `homepage.custom_services[]`, the `scrape_config` keys of `prometheus.jobs[]`, the `HOMEPAGE_*` variables of `homepage.environment`, the Caddyfile lines of the `directives` of Caddy sites. Their documentation links the upstream reference instead of repeating it.
